@@ -142,7 +142,13 @@ function unlockAudio() {
 }
 const Mic = {
   stream: null, an: null, buf: null, raf: 0, floor: 0.01,
-  async open() {
+  opening: null,
+  open() {                                   // one request at a time (the ▶ tap and the welcome both ask)
+    if (this.an) return Promise.resolve(true);
+    if (!this.opening) this.opening = this._open().finally(() => { this.opening = null; });
+    return this.opening;
+  },
+  async _open() {
     if (this.an) return true;
     if (!S.listen || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
     try {
@@ -221,7 +227,25 @@ function bindHome() { const h = $('#home'); if (h) h.onclick = () => home(false)
 function start() {
   show(`<div class="start"><div class="title">Pip &amp; Fifi</div>
     <div class="start-row">${charHTML('fifi')}<button class="big-play" id="go" aria-label="Play">${ICON.play}</button>${charHTML('pip')}</div></div>`);
-  $('#go').onclick = () => { unlockAudio(); pickVoices(); greet(); primeSpeech(); };
+  $('#go').onclick = () => { unlockAudio(); playSilence(); Mic.open(); pickVoices(); greet(); primeSpeech(); };
+}
+/* iPhone on silent mutes web speech. Playing a (silent) media sound inside the tap switches
+   iOS to "media playback", which ignores the silent switch — like a video does.
+   Opening the microphone at the same tap does the same once it's allowed. */
+let silentEl = null;
+function playSilence() {
+  try {
+    if (!silentEl) {
+      const rate = 8000, n = rate / 2, b = new ArrayBuffer(44 + n * 2), v = new DataView(b);
+      const w = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+      w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+      v.setUint16(22, 1, true); v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true);
+      v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+      silentEl = new Audio(URL.createObjectURL(new Blob([b], { type: 'audio/wav' })));
+      silentEl.setAttribute('playsinline', ''); silentEl.loop = false;
+    }
+    const p = silentEl.play(); if (p && p.catch) p.catch(() => {});
+  } catch (e) {}
 }
 /* iOS only lets speech start from a tap. Speak a silent word right inside the ▶ tap,
    so the welcome lines that come seconds later are allowed to play. */
