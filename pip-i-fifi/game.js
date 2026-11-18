@@ -43,12 +43,18 @@ function pickVoices() {
   if (!hasTTS) return;
   const vs = speechSynthesis.getVoices();
   const en = vs.filter(v => /^en/i.test(v.lang));
-  const fem = /martha|kate|serena|stephanie|libby|sonia|female/i, good = /enhanced|premium|ulepsz/i;
-  VOICE.en = en.find(v => /en.GB/i.test(v.lang) && good.test(v.name) && fem.test(v.name))
-    || en.find(v => /en.GB/i.test(v.lang) && fem.test(v.name)) || en.find(v => /en.GB/i.test(v.lang) && good.test(v.name))
-    || en.find(v => /en.GB/i.test(v.lang)) || en.find(v => /samantha|karen|moira|tessa/i.test(v.name)) || en[0] || null;
+  /* Fifi is a girl: female voices only. Male iPad voices are skipped. */
+  const fem = /martha|kate|serena|stephanie|libby|sonia|maisie|flo|sandy|shelley|grandma|samantha|karen|moira|tessa|catherine|allison|ava|susan|zoe|nicky|siri.*(voice 2|voice 4)|female/i;
+  const male = /daniel|arthur|oliver|eddy|fred|alex|aaron|gordon|rishi|tom|evan|nathan|reed|rocko|grandpa|albert|bad news|bahh|boing|bubbles|cellos|jester|organ|superstar|trinoids|whisper|wobble|zarvox|ralph|junior|male/i;
+  const good = /enhanced|premium|ulepsz/i, gb = v => /en.GB/i.test(v.lang);
+  const girl = v => fem.test(v.name) && !/grandpa/i.test(v.name), notBoy = v => !male.test(v.name) || /female/i.test(v.name);
+  VOICE.en = (S.voiceEn && en.find(v => v.name === S.voiceEn))
+    || en.find(v => gb(v) && girl(v) && good.test(v.name)) || en.find(v => gb(v) && girl(v))
+    || en.find(v => girl(v) && good.test(v.name)) || en.find(v => girl(v))
+    || en.find(v => gb(v) && notBoy(v)) || en.find(notBoy) || en[0] || null;
   const pl = vs.filter(v => /^pl/i.test(v.lang));
-  VOICE.pl = pl.find(v => /enhanced|premium|ulepsz/i.test(v.name)) || pl.find(v => /zosia/i.test(v.name)) || pl[0] || null;
+  VOICE.pl = (S.voicePl && pl.find(v => v.name === S.voicePl))
+    || pl.find(v => /enhanced|premium|ulepsz/i.test(v.name)) || pl.find(v => /zosia/i.test(v.name)) || pl[0] || null;
 }
 if (hasTTS) { pickVoices(); speechSynthesis.onvoiceschanged = pickVoices; }
 const STYLE = {
@@ -546,13 +552,25 @@ function parentGate(btn) {
   btn.addEventListener('pointerdown', startHold);
   ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => btn.addEventListener(ev, endHold));
 }
+function voiceOptions(lang) {
+  if (!hasTTS) return '<option>default</option>';
+  const cur = VOICE[lang] ? VOICE[lang].name : '';
+  const list = speechSynthesis.getVoices().filter(v => new RegExp('^' + lang, 'i').test(v.lang))
+    .sort((a, b) => (/GB|PL/i.test(b.lang) - /GB|PL/i.test(a.lang)) || a.name.localeCompare(b.name));
+  const esc = s => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  return list.map(v => `<option value="${esc(v.name)}" ${v.name === cur ? 'selected' : ''}>${esc(v.name)} (${v.lang})</option>`).join('') || '<option>default</option>';
+}
 function parentPanel() {
   hush(); pickVoices();
   const segBtn = (key, val, label) => `<button data-k="${key}" data-v="${val}" class="${String(S[key]) === String(val) ? 'on' : ''}">${label}</button>`;
   const el = document.createElement('div'); el.className = 'parent';
   el.innerHTML = `<div class="box"><h3>For grown-ups</h3>
-    <div class="row"><div><b>Voices</b><div class="small">EN: ${VOICE.en ? VOICE.en.name : 'default'} · PL: ${VOICE.pl ? VOICE.pl.name : 'default'}</div></div>
+    <div class="row"><div><b>Voices</b><div class="small">how high they sound</div></div>
       <div class="seg">${segBtn('voice', 'natural', 'Natural')}${segBtn('voice', 'cartoon', 'Cartoon')}${segBtn('voice', 'extra', 'Extra')}</div></div>
+    <div class="row"><div><b>Fifi's voice</b><div class="small">English · pick a girl's voice</div></div>
+      <div style="display:flex;gap:6px"><select id="ve" class="vsel">${voiceOptions('en')}</select><button class="pbtn" id="tf">▶</button></div></div>
+    <div class="row"><div><b>Pip's voice</b><div class="small">Polish</div></div>
+      <div style="display:flex;gap:6px"><select id="vp" class="vsel">${voiceOptions('pl')}</select><button class="pbtn" id="tp">▶</button></div></div>
     <div class="row"><div><b>Excited voices</b><div class="small">bouncy cheers, rising questions</div></div>
       <div class="seg">${segBtn('excite', 'true', 'On')}${segBtn('excite', 'false', 'Off')}</div></div>
     <div class="row"><div><b>Listen for her voice</b><div class="small">uses the microphone on "your turn"</div></div>
@@ -568,6 +586,10 @@ function parentPanel() {
     const k = b.dataset.k; S[k] = (k === 'listen' || k === 'excite') ? b.dataset.v === 'true' : b.dataset.v; save();
     $$(`.seg button[data-k="${k}"]`, el).forEach(x => x.classList.toggle('on', x === b));
   });
+  $('#ve', el).onchange = e => { S.voiceEn = e.target.value; save(); pickVoices(); hush(); say('fifi', 'en', `Hello, ${$('#n1', el).value}! I'm Fifi! Yay!`); };
+  $('#vp', el).onchange = e => { S.voicePl = e.target.value; save(); pickVoices(); hush(); say('pip', 'pl', `Cześć, ${$('#n3', el).value}! Jestem Pip! Hura!`); };
+  $('#tf', el).onclick = () => { hush(); say('fifi', 'en', `Hello, ${$('#n1', el).value}! I'm Fifi! Yay!`); };
+  $('#tp', el).onclick = () => { hush(); say('pip', 'pl', `Cześć, ${$('#n3', el).value}! Jestem Pip! Hura!`); };
   $('#tv', el).onclick = () => { seq([['fifi', 'en', `Hello, ${$('#n1', el).value}! Yay! Well done!`], ['pip', 'pl', `Cześć, ${$('#n3', el).value}! Hura! Brawo!`]]); };
   let armed = false;
   $('#rs', el).onclick = e => { if (!armed) { armed = true; e.target.textContent = 'Sure?'; return; } S.stickers = []; save(); e.target.textContent = 'Done'; };
