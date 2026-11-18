@@ -9,7 +9,7 @@ const screen = $('#screen');
 
 /* ---------- saved state ---------- */
 const KEY = 'pipfifi.v1';
-let S = { stickers: [], voice: 'cartoon', listen: true, sens: 'normal', kid: null };
+let S = { stickers: [], voice: 'cartoon', excite: true, listen: true, sens: 'normal', kid: null };
 try { Object.assign(S, JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
 const KID = Object.assign({}, window.KID, S.kid || {});
@@ -26,12 +26,12 @@ const ICON = {
 };
 
 function praiseEN() {
-  if (Math.random() < 0.35) return pick([`Well done, ${KID.en}!`, `Yay, ${KID.en}!`, `Brilliant, ${KID.en}!`]);
-  return pick(['Well done!', 'Yay!', 'Brilliant!', 'Super!', 'Hooray!', 'You did it!']);
+  if (Math.random() < 0.35) return pick([`Wow, ${KID.en}! Brilliant!`, `Yay! Well done, ${KID.en}!`, `Woohoo! Go ${KID.en}!`]);
+  return pick(['Woohoo!', 'Yay! Well done!', 'Wow! Brilliant!', 'Hooray!', 'Amazing!', 'You did it! Yippee!']);
 }
 function praisePL() {
-  if (Math.random() < 0.35) return pick([`Brawo, ${KID.plCall}!`, `Super, ${KID.plCall}!`, `Świetnie, ${KID.plCall}!`]);
-  return pick(['Brawo!', 'Super!', 'Świetnie!', 'Hura!', 'Pięknie!', 'Tak jest!']);
+  if (Math.random() < 0.35) return pick([`Brawo, ${KID.plCall}! Super!`, `Hura! Świetnie, ${KID.plCall}!`, `Wow! Pięknie, ${KID.plCall}!`]);
+  return pick(['Brawo!', 'Hura! Super!', 'Wow! Świetnie!', 'Ojej, pięknie!', 'Juhu! Brawo!', 'Tak jest! Super!']);
 }
 
 /* =====================================================================
@@ -43,7 +43,9 @@ function pickVoices() {
   if (!hasTTS) return;
   const vs = speechSynthesis.getVoices();
   const en = vs.filter(v => /^en/i.test(v.lang));
-  VOICE.en = en.find(v => /en.GB/i.test(v.lang) && /martha|kate|serena|stephanie|libby|sonia|female/i.test(v.name))
+  const fem = /martha|kate|serena|stephanie|libby|sonia|female/i, good = /enhanced|premium|ulepsz/i;
+  VOICE.en = en.find(v => /en.GB/i.test(v.lang) && good.test(v.name) && fem.test(v.name))
+    || en.find(v => /en.GB/i.test(v.lang) && fem.test(v.name)) || en.find(v => /en.GB/i.test(v.lang) && good.test(v.name))
     || en.find(v => /en.GB/i.test(v.lang)) || en.find(v => /samantha|karen|moira|tessa/i.test(v.name)) || en[0] || null;
   const pl = vs.filter(v => /^pl/i.test(v.lang));
   VOICE.pl = pl.find(v => /enhanced|premium|ulepsz/i.test(v.name)) || pl.find(v => /zosia/i.test(v.name)) || pl[0] || null;
@@ -51,8 +53,8 @@ function pickVoices() {
 if (hasTTS) { pickVoices(); speechSynthesis.onvoiceschanged = pickVoices; }
 const STYLE = {
   natural: { fifi: 1.1, pip: 1.0 },
-  cartoon: { fifi: 1.55, pip: 1.3 },
-  extra:   { fifi: 1.9, pip: 1.65 }
+  cartoon: { fifi: 1.45, pip: 1.25 },
+  extra:   { fifi: 1.7, pip: 1.5 }
 };
 
 let tk = 0; // changes whenever the screen changes → stops old speech sequences
@@ -63,24 +65,44 @@ function talk(who, on) {
   if (!on) return;
   const els = $$(`.char[data-who="${who}"]`);
   els.forEach(c => c.classList.add('talking'));
-  mouthTimer = setInterval(() => els.forEach(c => c.classList.toggle('open', Math.random() > 0.35)), 110);
+  mouthTimer = setInterval(() => els.forEach(c => c.classList.toggle('open', Math.random() > 0.3)), 95);
+}
+/* Excitement: each piece of a sentence gets its own pitch and speed.
+   "Wow!" / "Brawo!" → high and bouncy, questions rise, normal bits stay calm. */
+function pieces(text) { return (text.match(/[^!?.…]+[!?.…]*/g) || [text]).map(x => x.trim()).filter(Boolean); }
+function prosody(piece, i, n, who, lang) {
+  const base = (STYLE[S.voice] || STYLE.cartoon)[who];
+  let pitch = base, rate = lang === 'pl' ? 0.88 : 0.98;
+  if (S.excite !== false) {
+    const excl = /!$/.test(piece), q = /\?$/.test(piece), short = piece.split(/\s+/).length <= 2;
+    if (excl) { pitch += 0.22; rate += 0.06; }
+    if (excl && short) { pitch += 0.12; rate -= 0.06; }   // stretch little cheers: "Yaaay!"
+    if (q) pitch += 0.14;
+    if (i === 0 && n > 1 && excl) pitch += 0.05;
+    pitch += (Math.random() - 0.5) * 0.08;                   // tiny variation so it never sounds robotic-identical
+  } else { rate = lang === 'pl' ? 0.8 : 0.9; }
+  return { pitch: Math.max(0.5, Math.min(2, pitch)), rate };
 }
 function say(who, lang, text) {
   return new Promise(res => {
     text = kidify(text, lang);
     if (!hasTTS) { talk(who, true); speakingUntil = Infinity; setTimeout(() => { talk(who, false); speakingUntil = performance.now() + 400; res(); }, 400 + text.length * 55); return; }
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = lang === 'pl' ? 'pl-PL' : 'en-GB';
-    const v = VOICE[lang]; if (v) u.voice = v;
-    u.pitch = Math.min(2, (STYLE[S.voice] || STYLE.cartoon)[who]);
-    u.rate = lang === 'pl' ? 0.8 : 0.9;
     let done = false;
     const fin = () => { if (done) return; done = true; talk(who, false); speakingUntil = performance.now() + 400; res(); };
-    u.onstart = () => talk(who, true);
-    u.onend = fin; u.onerror = fin;
+    const parts = pieces(text);
     talk(who, true);
     speakingUntil = Infinity;
-    speechSynthesis.speak(u);
+    parts.forEach((p, i) => {
+      const u = new SpeechSynthesisUtterance(p);
+      u.lang = lang === 'pl' ? 'pl-PL' : 'en-GB';
+      const v = VOICE[lang]; if (v) u.voice = v;
+      const pr = prosody(p, i, parts.length, who, lang);
+      u.pitch = pr.pitch; u.rate = pr.rate;
+      u.onstart = () => talk(who, true);
+      u.onerror = fin;
+      if (i === parts.length - 1) u.onend = fin;
+      speechSynthesis.speak(u);
+    });
     setTimeout(fin, 3000 + text.length * 140);
   });
 }
@@ -215,8 +237,8 @@ function home(greet) {
   $$('.tile').forEach(b => b.onclick = () => openTile(b.dataset.t, b));
   parentGate($('#gear'));
   waveAll();
-  if (greet) seq([['fifi', 'en', `Hello, ${KID.en}!`], ['pip', 'pl', `Cześć, ${KID.plCall}!`],
-    ['fifi', 'en', 'What shall we play?'], ['pip', 'pl', 'W co się bawimy?']], my);
+  if (greet) seq([['fifi', 'en', `Hello, ${KID.en}! Yay!`], ['pip', 'pl', `Cześć, ${KID.plCall}! Hura!`],
+    ['fifi', 'en', 'Ooh! What shall we play?'], ['pip', 'pl', 'W co się bawimy?']], my);
   else seq([['pip', 'pl', 'W co się bawimy?']], my);
 }
 let opening = false;
@@ -227,7 +249,7 @@ async function openTile(id, el) {
   el.style.transform = 'scale(1.12)';
   const go = { colours: () => pickGame('colours'), animals: () => pickGame('animals'), count: countGame,
     friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), stickers: stickerBook }[id];
-  await Promise.race([seq([['fifi', 'en', t.en + '!'], ['pip', 'pl', t.pl + '!']], my), wait(2600)]);
+  await Promise.race([seq([['fifi', 'en', 'Yay! ' + t.en + '!'], ['pip', 'pl', 'Hura! ' + t.pl + '!']], my), wait(3200)]);
   opening = false;
   if (my === tk) go();
 }
@@ -254,8 +276,8 @@ function pickGame(kind) {
     bindHome();
     const bilingual = round < 3;
     const prompt = isCol
-      ? (bilingual ? [['fifi', 'en', `Find the ${target.en} balloon!`], ['pip', 'pl', cap(target.pl) + '!']] : [['pip', 'pl', `Gdzie jest ${target.pl} balonik?`]])
-      : (bilingual ? [['fifi', 'en', `Where is the ${target.en}?`], ['pip', 'pl', cap(target.pl) + '!']] : [['pip', 'pl', `Gdzie jest ${target.pl}?`]]);
+      ? (bilingual ? [['fifi', 'en', pick([`Ooh! Find the ${target.en} balloon!`, `Where's the ${target.en} balloon? Let's look!`])], ['pip', 'pl', cap(target.pl) + '!']] : [['pip', 'pl', `Gdzie jest ${target.pl} balonik?`]])
+      : (bilingual ? [['fifi', 'en', pick([`Ooh! Where is the ${target.en}?`, `Can you find the ${target.en}?`])], ['pip', 'pl', cap(target.pl) + '!']] : [['pip', 'pl', `Gdzie jest ${target.pl}?`]]);
     seq(prompt, my);
     $('#again').onclick = () => { hush(); seq(prompt); };
     let solved = false;
@@ -292,7 +314,7 @@ function countGame() {
     const my = show(`${topbar(rounds.length, r)}
       <div class="count-area">${Array.from({ length: n }, (_, i) => `<button class="thing" data-k="${i}">${thing.emoji}</button>`).join('')}</div>${chars()}`);
     bindHome();
-    const prompt = r === 0 ? [['fifi', 'en', 'Let\'s count! Tap them one by one!'], ['pip', 'pl', 'Liczymy!']] : [['pip', 'pl', 'Liczymy!']];
+    const prompt = r === 0 ? [['fifi', 'en', 'Ooh! Let\'s count! Tap them one by one!'], ['pip', 'pl', 'Hura! Liczymy!']] : [['pip', 'pl', 'Liczymy!']];
     seq(prompt, my);
     $('#again').onclick = () => { hush(); seq([['fifi', 'en', 'Tap them one by one!'], ['pip', 'pl', 'Liczymy!']]); };
     let count = 0;
@@ -356,7 +378,7 @@ function phraseGame(list) {
       cheer(); confettiBurst();
       const lines = praised === 1
         ? [['pip', 'pl', praisePL()], ['fifi', 'en', praiseEN()]]
-        : praised < 4 ? [['pip', 'pl', pick(['Super!', 'Brawo!', 'Jeszcze raz!', 'Pięknie!'])]]
+        : praised < 4 ? [['pip', 'pl', pick(['Super!', 'Brawo!', 'Hura! Jeszcze raz!', 'Wow! Pięknie!', 'Juhu!'])]]
         : [];                                   // after a few times: just a happy jump, no talking
       if (lines.length) await seq(lines);
       busy = false;
@@ -365,7 +387,7 @@ function phraseGame(list) {
     async function intro() {
       busy = true; yt.textContent = '';
       const lines = [['fifi', 'en', p.why], ['pip', 'pl', p.pl]];
-      if (!saidYourTurn) { saidYourTurn = true; lines.push(['fifi', 'en', `Your turn, ${KID.en}! Say it!`]); }
+      if (!saidYourTurn) { saidYourTurn = true; lines.push(['fifi', 'en', `Ooh! Your turn, ${KID.en}! Say it!`]); }
       await seq(lines);
       busy = false;
       if (!alive()) return;
@@ -409,7 +431,7 @@ function reward(again) {
   confetti(); cheer();
   $('#rh').onclick = () => home(false);
   $('#ra').onclick = again;
-  seq([['fifi', 'en', `A sticker for you, ${KID.en}!`], ['pip', 'pl', `Naklejka dla ciebie! Brawo, ${KID.plCall}!`]], my).then(ok => ok && cheer());
+  seq([['fifi', 'en', `Wow! A sticker for you, ${KID.en}! Yay!`], ['pip', 'pl', `Naklejka dla ciebie! Hura! Brawo, ${KID.plCall}!`]], my).then(ok => ok && cheer());
 }
 function stickerBook() {
   const my = show(`${topbar(0, 0)}<div class="book">${window.STICKERS.map(s =>
@@ -438,6 +460,8 @@ function parentPanel() {
   el.innerHTML = `<div class="box"><h3>For grown-ups</h3>
     <div class="row"><div><b>Voices</b><div class="small">EN: ${VOICE.en ? VOICE.en.name : 'default'} · PL: ${VOICE.pl ? VOICE.pl.name : 'default'}</div></div>
       <div class="seg">${segBtn('voice', 'natural', 'Natural')}${segBtn('voice', 'cartoon', 'Cartoon')}${segBtn('voice', 'extra', 'Extra')}</div></div>
+    <div class="row"><div><b>Excited voices</b><div class="small">bouncy cheers, rising questions</div></div>
+      <div class="seg">${segBtn('excite', 'true', 'On')}${segBtn('excite', 'false', 'Off')}</div></div>
     <div class="row"><div><b>Listen for her voice</b><div class="small">uses the microphone on "your turn"</div></div>
       <div class="seg">${segBtn('listen', 'true', 'On')}${segBtn('listen', 'false', 'Off')}</div></div>
     <div class="row"><div><b>Microphone sensitivity</b><div class="small">"High" if her voice is often missed</div></div>
@@ -448,10 +472,10 @@ function parentPanel() {
     <div class="row" style="border:0"><button class="pbtn" id="tv">Test voices</button><button class="pbtn main" id="cl">Done</button></div></div>`;
   document.body.appendChild(el);
   $$('.seg button', el).forEach(b => b.onclick = () => {
-    const k = b.dataset.k; S[k] = k === 'listen' ? b.dataset.v === 'true' : b.dataset.v; save();
+    const k = b.dataset.k; S[k] = (k === 'listen' || k === 'excite') ? b.dataset.v === 'true' : b.dataset.v; save();
     $$(`.seg button[data-k="${k}"]`, el).forEach(x => x.classList.toggle('on', x === b));
   });
-  $('#tv', el).onclick = () => { seq([['fifi', 'en', `Hello, ${$('#n1', el).value}!`], ['pip', 'pl', `Cześć, ${$('#n3', el).value}!`]]); };
+  $('#tv', el).onclick = () => { seq([['fifi', 'en', `Hello, ${$('#n1', el).value}! Yay! Well done!`], ['pip', 'pl', `Cześć, ${$('#n3', el).value}! Hura! Brawo!`]]); };
   let armed = false;
   $('#rs', el).onclick = e => { if (!armed) { armed = true; e.target.textContent = 'Sure?'; return; } S.stickers = []; save(); e.target.textContent = 'Done'; };
   $('#cl', el).onclick = () => {
