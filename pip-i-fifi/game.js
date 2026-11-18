@@ -148,12 +148,13 @@ const Mic = {
   stream: null, an: null, buf: null, raf: 0, floor: 0.01,
   opening: null,
   open() {                                   // one request at a time (the ▶ tap and the welcome both ask)
-    if (this.an) return Promise.resolve(true);
+    if (this.an && this.stream && this.stream.getAudioTracks().some(t => t.readyState === 'live')) return Promise.resolve(true);
     if (!this.opening) this.opening = this._open().finally(() => { this.opening = null; });
     return this.opening;
   },
   async _open() {
-    if (this.an) return true;
+    if (this.an && this.stream && this.stream.getAudioTracks().some(t => t.readyState === 'live')) return true;
+    if (this.stream) this.close();           // iOS ended it (e.g. app was in the background) → ask again
     if (!S.listen || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: true } });
@@ -219,7 +220,8 @@ function confetti() {
 /* =====================================================================
    SCREENS
    ===================================================================== */
-function show(html, keepMic) { hush(); Mic.unwatch(); if (!keepMic) Mic.close(); screen.innerHTML = `<div class="view">${html}</div>`; return tk; }
+/* The mic is never switched off between screens: on iPhone/iPad every new request = a new permission popup. */
+function show(html, keepMic) { hush(); Mic.unwatch(); screen.innerHTML = `<div class="view">${html}</div>`; return tk; }
 const topbar = (dots, done) => `<div class="topbar">
   <button class="round-btn" id="home" aria-label="Home">🏠</button>
   ${dots ? `<div class="dots">${Array.from({ length: dots }, (_, i) => `<i class="${i < done ? 'on' : ''}"></i>`).join('')}</div>` : '<span></span>'}
