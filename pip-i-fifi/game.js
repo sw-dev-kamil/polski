@@ -9,7 +9,7 @@ const screen = $('#screen');
 
 /* ---------- saved state ---------- */
 const KEY = 'pipfifi.v1';
-let S = { stickers: [], voice: 'cartoon', listen: true, kid: null };
+let S = { stickers: [], voice: 'cartoon', listen: true, sens: 'normal', kid: null };
 try { Object.assign(S, JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
 const KID = Object.assign({}, window.KID, S.kid || {});
@@ -68,17 +68,18 @@ function talk(who, on) {
 function say(who, lang, text) {
   return new Promise(res => {
     text = kidify(text, lang);
-    if (!hasTTS) { talk(who, true); setTimeout(() => { talk(who, false); res(); }, 400 + text.length * 55); return; }
+    if (!hasTTS) { talk(who, true); speakingUntil = Infinity; setTimeout(() => { talk(who, false); speakingUntil = performance.now() + 400; res(); }, 400 + text.length * 55); return; }
     const u = new SpeechSynthesisUtterance(text);
     u.lang = lang === 'pl' ? 'pl-PL' : 'en-GB';
     const v = VOICE[lang]; if (v) u.voice = v;
     u.pitch = Math.min(2, (STYLE[S.voice] || STYLE.cartoon)[who]);
     u.rate = lang === 'pl' ? 0.8 : 0.9;
     let done = false;
-    const fin = () => { if (done) return; done = true; talk(who, false); res(); };
+    const fin = () => { if (done) return; done = true; talk(who, false); speakingUntil = performance.now() + 400; res(); };
     u.onstart = () => talk(who, true);
     u.onend = fin; u.onerror = fin;
     talk(who, true);
+    speakingUntil = Infinity;
     speechSynthesis.speak(u);
     setTimeout(fin, 3000 + text.length * 140);
   });
@@ -92,48 +93,79 @@ async function seq(lines, my = tk) {
   }
   return my === tk;
 }
-function hush() { tk++; if (hasTTS) speechSynthesis.cancel(); talk(null, false); stopListening(); }
+function hush() { tk++; if (hasTTS) speechSynthesis.cancel(); talk(null, false); speakingUntil = performance.now() + 300; }
 function cheer(who) {
   $$(who ? `.char[data-who="${who}"]` : '.char').forEach(c => { c.classList.remove('cheer'); void c.offsetWidth; c.classList.add('cheer'); setTimeout(() => c.classList.remove('cheer'), 1200); });
 }
 function waveAll() { $$('.char').forEach(c => { c.classList.add('waving'); setTimeout(() => c.classList.remove('waving'), 2100); }); }
 
 /* =====================================================================
-   LISTENING — just detects that she spoke (no judging at this age)
+   LISTENING — detects that she spoke (no judging at this age).
+   The mic stays open for the whole phrase card. While Pip or Fifi talk,
+   listening pauses, so their voices never count as hers.
    ===================================================================== */
-let micStop = null;
-function stopListening() { if (micStop) { micStop(false); micStop = null; } }
-async function hearVoice(ms, onLevel) {
-  if (!S.listen || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return null;
-  let stream;
-  try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
-  catch (e) { return null; }
-  const AC = window.AudioContext || window.webkitAudioContext;
-  const ctx = new AC();
-  const an = ctx.createAnalyser(); an.fftSize = 1024;
-  ctx.createMediaStreamSource(stream).connect(an);
-  const buf = new Float32Array(an.fftSize);
-  return new Promise(res => {
-    let loud = 0, raf = 0; const t0 = performance.now(); let ended = false;
-    const done = v => {
-      if (ended) return; ended = true; cancelAnimationFrame(raf);
-      stream.getTracks().forEach(t => t.stop()); try { ctx.close(); } catch (e) {}
-      onLevel && onLevel(0); micStop = null; res(v);
-    };
-    micStop = done;
+let speakingUntil = 0;              // no listening before this time (characters talking)
+let AUDIO = null;                   // one shared AudioContext, unlocked by a tap
+function unlockAudio() {
+  try {
+    if (!AUDIO) AUDIO = new (window.AudioContext || window.webkitAudioContext)();
+    if (AUDIO.state === 'suspended') AUDIO.resume();
+  } catch (e) {}
+}
+const Mic = {
+  stream: null, an: null, buf: null, raf: 0, floor: 0.01,
+  async open() {
+    if (this.an) return true;
+    if (!S.listen || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
+    try {
+      this.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: true } });
+      unlockAudio();
+      if (AUDIO.state === 'suspended') { try { await AUDIO.resume(); } catch (e) {} }
+      this.an = AUDIO.createAnalyser(); this.an.fftSize = 1024;
+      AUDIO.createMediaStreamSource(this.stream).connect(this.an);
+      this.buf = new Float32Array(this.an.fftSize);
+      return true;
+    } catch (e) { this.close(); return false; }
+  },
+  level() {
+    this.an.getFloatTimeDomainData(this.buf);
+    let s = 0; for (let i = 0; i < this.buf.length; i++) s += this.buf[i] * this.buf[i];
+    return Math.sqrt(s / this.buf.length);
+  },
+  /* onUtterance() fires each time she says something — after she finishes */
+  watch(onUtterance, onLevel) {
+    this.unwatch();
+    let voiced = 0, silent = 0, inUtt = false, uttFrames = 0;
+    const high = S.sens === 'high';
     const tick = () => {
-      an.getFloatTimeDomainData(buf);
-      let s = 0; for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
-      const rms = Math.sqrt(s / buf.length);
-      onLevel && onLevel(rms);
-      loud = rms > 0.03 ? loud + 1 : Math.max(0, loud - 0.5);
-      if (loud > 12) return done(true);              // ~0.2 s of voice
-      if (performance.now() - t0 > ms) return done(false);
-      raf = requestAnimationFrame(tick);
+      if (!this.an) return;
+      const rms = this.level();
+      const thr = Math.min(0.06, Math.max(high ? 0.005 : 0.008, this.floor * (high ? 2.2 : 3)));
+      if (performance.now() < speakingUntil) {
+        voiced = 0; silent = 0; inUtt = false; uttFrames = 0;
+        onLevel && onLevel(0, false);
+      } else {
+        onLevel && onLevel(rms, true);
+        if (rms > thr) {
+          voiced++; silent = 0; if (voiced >= 6) inUtt = true;
+          if (inUtt && ++uttFrames > 150) { inUtt = false; voiced = 0; uttFrames = 0; onUtterance(); } // long talking: react anyway
+        } else {
+          this.floor = this.floor * 0.97 + rms * 0.03;          // learns the room's background noise
+          if (inUtt) { if (++silent >= 22) { inUtt = false; voiced = 0; silent = 0; uttFrames = 0; onUtterance(); } }
+          else voiced = Math.max(0, voiced - 1);
+        }
+      }
+      this.raf = requestAnimationFrame(tick);
     };
     tick();
-  });
-}
+  },
+  unwatch() { cancelAnimationFrame(this.raf); this.raf = 0; },
+  close() {
+    this.unwatch();
+    if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+    this.stream = null; this.an = null;
+  }
+};
 
 /* ---------- confetti ---------- */
 function confetti() {
@@ -149,7 +181,7 @@ function confetti() {
 /* =====================================================================
    SCREENS
    ===================================================================== */
-function show(html) { hush(); screen.innerHTML = `<div class="view">${html}</div>`; return tk; }
+function show(html, keepMic) { hush(); Mic.unwatch(); if (!keepMic) Mic.close(); screen.innerHTML = `<div class="view">${html}</div>`; return tk; }
 const topbar = (dots, done) => `<div class="topbar">
   <button class="round-btn" id="home" aria-label="Home">🏠</button>
   ${dots ? `<div class="dots">${Array.from({ length: dots }, (_, i) => `<i class="${i < done ? 'on' : ''}"></i>`).join('')}</div>` : '<span></span>'}
@@ -161,7 +193,7 @@ function bindHome() { const h = $('#home'); if (h) h.onclick = () => home(false)
 function start() {
   show(`<div class="start"><div class="title">Pip &amp; Fifi</div>
     <div class="start-row">${charHTML('fifi')}<button class="big-play" id="go" aria-label="Play">${ICON.play}</button>${charHTML('pip')}</div></div>`);
-  $('#go').onclick = () => { pickVoices(); home(true); };
+  $('#go').onclick = () => { unlockAudio(); pickVoices(); home(true); };
 }
 
 /* ---------- home ---------- */
@@ -189,7 +221,7 @@ function home(greet) {
 }
 let opening = false;
 async function openTile(id, el) {
-  if (opening) return; opening = true;
+  if (opening) return; opening = true; unlockAudio();
   const t = TILES.find(x => x.id === id);
   hush(); const my = tk;
   el.style.transform = 'scale(1.12)';
@@ -285,45 +317,73 @@ function countGame() {
 }
 
 /* ---------- say it: playing with friends & nursery words ---------- */
+let saidYourTurn = false; // "Your turn!" is spoken only once per visit — after that a visual cue
 function phraseGame(list) {
-  let i = 0;
+  let i = 0, card = 0;
+  saidYourTurn = false;
   const again = () => phraseGame(list);
   const next = async () => {
     if (i >= list.length) return reward(again);
-    const p = list[i];
-    const my = show(`${topbar(list.length, i)}
+    const p = list[i]; const c = ++card;
+    show(`${topbar(list.length, i)}
       <div class="phrase" id="ph"><button class="pic" id="pic">${p.emoji}</button>
         <div class="pl">${kidify(p.pl, 'pl')}</div><div class="en">${kidify(p.en, 'en')}</div>
-        <div class="your-turn" id="yt"></div></div>${chars()}`);
+        <div class="your-turn" id="yt"></div></div>${chars()}`, true);
     bindHome();
     const ph = $('#ph'), yt = $('#yt');
-    $('#pic').onclick = () => { hush(); say('pip', 'pl', p.pl); };
-    $('#again').onclick = () => { hush(); run(); };
+    let praised = 0, busy = false, nudged = false, lastVoice = 0, nudgeTimer = 0;
+    const alive = () => c === card && $('#ph') === ph;
+
     const showNext = () => {
-      if ($('#nx')) return;
+      if (!alive() || $('#nx')) return;
       $('.view').insertAdjacentHTML('beforeend', `<button class="next-btn" id="nx" aria-label="Next">${ICON.next}</button>`);
-      $('#nx').onclick = () => { i++; next(); };
+      $('#nx').onclick = () => { clearTimeout(nudgeTimer); i++; next(); };
     };
-    async function run() {
-      const t = tk;
-      yt.textContent = '';
-      const ok = await seq([['fifi', 'en', p.why], ['pip', 'pl', p.pl], ['fifi', 'en', Math.random() < 0.4 ? `Your turn, ${KID.en}!` : 'Your turn! Say it!']], t);
-      if (!ok) return;
-      yt.textContent = '🎤 …';
-      ph.classList.add('listening');
-      const heard = await hearVoice(5500, lv => ph.style.setProperty('--lv', (1 + Math.min(0.35, lv * 6)).toFixed(3)));
-      ph.classList.remove('listening'); yt.textContent = '';
-      if (t !== tk) return;
-      if (heard) {
-        cheer(); confettiSmall();
-        await seq([['pip', 'pl', praisePL()], ['fifi', 'en', praiseEN()]], t);
-      } else {
-        await seq([['fifi', 'en', 'Let\'s say it together!'], ['pip', 'pl', p.pl]], t);
-      }
-      if (t === tk) showNext();
+    const armNudge = () => {
+      clearTimeout(nudgeTimer);
+      nudgeTimer = setTimeout(async () => {
+        if (!alive() || busy || praised) return;
+        if (!nudged) {
+          nudged = true; busy = true;
+          await seq([['fifi', 'en', 'Let\'s say it together!'], ['pip', 'pl', p.pl]]);
+          busy = false; armNudge();
+        } else showNext();
+      }, 6500);
+    };
+    async function onVoice() {
+      if (!alive() || busy) return;
+      busy = true; praised++; lastVoice = performance.now(); clearTimeout(nudgeTimer);
+      cheer(); confettiBurst();
+      const lines = praised === 1
+        ? [['pip', 'pl', praisePL()], ['fifi', 'en', praiseEN()]]
+        : praised < 4 ? [['pip', 'pl', pick(['Super!', 'Brawo!', 'Jeszcze raz!', 'Pięknie!'])]]
+        : [];                                   // after a few times: just a happy jump, no talking
+      if (lines.length) await seq(lines);
+      busy = false;
+      if (alive()) showNext();
     }
-    run();
-    setTimeout(() => { if (my === tk) showNext(); }, 9000); // never get stuck
+    async function intro() {
+      busy = true; yt.textContent = '';
+      const lines = [['fifi', 'en', p.why], ['pip', 'pl', p.pl]];
+      if (!saidYourTurn) { saidYourTurn = true; lines.push(['fifi', 'en', `Your turn, ${KID.en}! Say it!`]); }
+      await seq(lines);
+      busy = false;
+      if (!alive()) return;
+      yt.textContent = micOn ? '🎤' : '';
+      if (micOn) armNudge(); else { await seq([['pip', 'pl', p.pl]]); showNext(); }
+    }
+
+    $('#pic').onclick = async () => { if (!alive()) return; hush(); busy = true; await say('pip', 'pl', p.pl); busy = false; };
+    $('#again').onclick = () => { hush(); clearTimeout(nudgeTimer); intro(); };
+
+    const micOn = await Mic.open();          // asks for the microphone once, then stays open
+    if (!alive()) return;
+    if (micOn) Mic.watch(onVoice, (lv, active) => {
+      ph.classList.toggle('listening', active);
+      ph.style.setProperty('--lv', (1 + Math.min(0.35, lv * 7)).toFixed(3));
+    });
+    intro();
+    setTimeout(() => { if (alive()) showNext(); }, 14000); // never get stuck
   };
   next();
 }
@@ -380,6 +440,8 @@ function parentPanel() {
       <div class="seg">${segBtn('voice', 'natural', 'Natural')}${segBtn('voice', 'cartoon', 'Cartoon')}${segBtn('voice', 'extra', 'Extra')}</div></div>
     <div class="row"><div><b>Listen for her voice</b><div class="small">uses the microphone on "your turn"</div></div>
       <div class="seg">${segBtn('listen', 'true', 'On')}${segBtn('listen', 'false', 'Off')}</div></div>
+    <div class="row"><div><b>Microphone sensitivity</b><div class="small">"High" if her voice is often missed</div></div>
+      <div class="seg">${segBtn('sens', 'normal', 'Normal')}${segBtn('sens', 'high', 'High')}</div></div>
     <div class="row"><div><b>Her name</b><div class="small">English · Polish · Polish when calling her</div></div>
       <div style="display:flex;gap:6px"><input id="n1" value="${KID.en}" size="7"><input id="n2" value="${KID.pl}" size="7"><input id="n3" value="${KID.plCall}" size="7"></div></div>
     <div class="row"><div><b>Stickers</b><div class="small">${S.stickers.length} collected</div></div><button class="pbtn" id="rs">Reset</button></div>
