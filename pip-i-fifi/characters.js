@@ -21,7 +21,8 @@
 
   const eyes = (lx, rx, y) => `
     <g class="eye"><ellipse cx="${lx}" cy="${y}" rx="8" ry="10" fill="#2B2118"/><circle cx="${lx + 2.5}" cy="${y - 3.5}" r="3" fill="#fff"/></g>
-    <g class="eye"><ellipse cx="${rx}" cy="${y}" rx="8" ry="10" fill="#2B2118"/><circle cx="${rx + 2.5}" cy="${y - 3.5}" r="3" fill="#fff"/></g>`;
+    <g class="eye"><ellipse cx="${rx}" cy="${y}" rx="8" ry="10" fill="#2B2118"/><circle cx="${rx + 2.5}" cy="${y - 3.5}" r="3" fill="#fff"/></g>
+    <path class="eye-happy" d="M${lx - 9} ${y + 3} Q${lx} ${y - 9} ${lx + 9} ${y + 3} M${rx - 9} ${y + 3} Q${rx} ${y - 9} ${rx + 9} ${y + 3}" fill="none" stroke="#2B2118" stroke-width="4.5" stroke-linecap="round"/>`;
   const mouth = (x, y) => `
     <path class="mouth-c" d="M${x - 10} ${y} Q${x} ${y + 9} ${x + 10} ${y}" fill="none" stroke="#5A2E22" stroke-width="3.5" stroke-linecap="round"/>
     <g class="mouth-o"><ellipse cx="${x}" cy="${y + 3}" rx="8.5" ry="8" fill="#7A2E2E"/><ellipse cx="${x}" cy="${y + 7}" rx="5" ry="3" fill="#F08A8A"/></g>`;

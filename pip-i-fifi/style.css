@@ -47,6 +47,16 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .tail { transform-origin: 125px 180px; animation: tailWag 1.8s ease-in-out infinite; }
 @keyframes tailWag { 50% { transform: rotate(8deg); } }
 
+.eye-happy { display: none; }
+.char.happy .eye { display: none; }
+.char.happy .eye-happy { display: inline; }
+.char.walking:not(.talking):not(.cheer) { animation: walkHop .42s ease-in-out infinite; }
+@keyframes walkHop { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-3.5vmin) rotate(3deg); } }
+.char.listen:not(.talking):not(.cheer) { animation: listenTilt 1.8s ease-in-out infinite; }
+.char.pip.listen:not(.talking):not(.cheer) { animation-name: listenTiltR; }
+@keyframes listenTilt { 50% { transform: rotate(-6deg) translateY(-.6vmin); } }
+@keyframes listenTiltR { 50% { transform: rotate(6deg) translateY(-.6vmin); } }
+
 /* corner placement inside activities */
 .char.left { left: 1vw; bottom: 1vh; width: 20vmin; }
 .char.right { right: 1vw; bottom: 1vh; width: 20vmin; }
@@ -60,6 +70,36 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .big-play svg { width: 45%; height: 45%; fill: #fff; margin-left: 8%; }
 @keyframes pulse { 50% { transform: scale(1.07); } }
 .big-play:active { transform: translateY(1vmin); box-shadow: 0 .4vmin 0 #D9573A; }
+
+/* ============ Welcome: walk in, come to the front, chat ============ */
+.greet { position: absolute; inset: 0; }
+.gwrap { position: absolute; left: 50%; bottom: 22vh; width: 30vmin; z-index: 3; transform-origin: 50% 100%;
+  transition: transform 2.2s cubic-bezier(.4,.1,.4,1), bottom 2.2s ease; }
+.gwrap .char { position: relative; width: 100%; }
+.gl { transform: translateX(-100vw) scale(.6); }
+.gr { transform: translateX(100vw) scale(.6); }
+.greet.walk .gl { transform: translateX(-110%) scale(.6); }
+.greet.walk .gr { transform: translateX(10%) scale(.6); }
+.greet.front .gwrap { bottom: -5vh; transition: transform .9s cubic-bezier(.3,1.45,.5,1), bottom .9s cubic-bezier(.3,1.3,.5,1); }
+.greet.front .gl { transform: translateX(-125%) scale(1.45); }
+.greet.front .gr { transform: translateX(25%) scale(1.45); }
+.greet.leave .gwrap { bottom: 1vh; transition: transform .7s ease-in-out, bottom .7s ease-in-out; }
+.greet.leave .gl { transform: translateX(calc(-50vw + 2vw)) scale(.85); }
+.greet.leave .gr { transform: translateX(calc(50vw - 100% - 2vw)) scale(.85); }
+.talk-bubble, .yes-btn { position: absolute; left: 50%; top: 9vh; z-index: 6; display: none;
+  transform: translateX(-50%) scale(var(--lv, 1)); transition: transform .08s; }
+.talk-bubble { width: 20vmin; height: 20vmin; border-radius: 50%; background: #fff; font-size: 10vmin; align-items: center; justify-content: center;
+  box-shadow: 0 0 0 1.2vmin #FFC93C, 0 2vmin 4vmin rgba(0,0,0,.15); }
+.greet.listening:not(.ask-yes) .talk-bubble { display: flex; animation: pop .4s cubic-bezier(.3,1.6,.5,1); }
+.yes-btn { padding: 2.5vmin 6vmin; border-radius: 99px; background: #4CC373; color: #fff; font-size: 7vmin; font-weight: 900; gap: 2vmin; align-items: center;
+  box-shadow: 0 1.2vmin 0 #35A25A, 0 2vmin 4vmin rgba(0,0,0,.15); }
+.greet.ask-yes .yes-btn { display: flex; animation: pop .4s cubic-bezier(.3,1.6,.5,1); }
+.greet .skip { position: absolute; top: calc(env(safe-area-inset-top) + 2vmin); right: 2vmin; width: 7vmin; height: 7vmin; border-radius: 50%;
+  background: rgba(255,255,255,.5); display: flex; align-items: center; justify-content: center; z-index: 10; }
+.greet .skip svg { width: 50%; fill: #9A8A80; }
+.heart { position: fixed; font-size: 7vmin; z-index: 20; pointer-events: none; animation: heartUp 2.6s ease-out forwards; }
+@keyframes heartUp { 0% { opacity: 0; transform: scale(.3); } 15% { opacity: 1; transform: scale(1.1); }
+  50% { transform: translate(2vmin, -22vh) rotate(8deg); } 100% { opacity: 0; transform: translate(-2vmin, -50vh) rotate(-8deg) scale(.9); } }
 
 /* ============ Home menu ============ */
 .menu { position: absolute; left: 0; right: 0; top: 10vh; margin: 0 auto; max-width: 75vmin; display: flex; flex-wrap: wrap; justify-content: center; gap: 3.5vmin; }
@@ -157,4 +197,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   .book { left: 6vmin; right: 6vmin; bottom: 26vh; }
   .next-btn { right: 50%; transform: translateX(50%); bottom: 22vh; }
   .char.left, .char.right { width: 24vmin; }
+  .greet.front .gl { transform: translateX(-122%) scale(1.3); }
+  .greet.front .gr { transform: translateX(22%) scale(1.3); }
+  .greet.front .gwrap { bottom: 2vh; }
 }

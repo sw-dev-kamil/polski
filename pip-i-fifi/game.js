@@ -215,7 +215,100 @@ function bindHome() { const h = $('#home'); if (h) h.onclick = () => home(false)
 function start() {
   show(`<div class="start"><div class="title">Pip &amp; Fifi</div>
     <div class="start-row">${charHTML('fifi')}<button class="big-play" id="go" aria-label="Play">${ICON.play}</button>${charHTML('pip')}</div></div>`);
-  $('#go').onclick = () => { unlockAudio(); pickVoices(); home(true); };
+  $('#go').onclick = () => { unlockAudio(); pickVoices(); greet(); };
+}
+
+/* ---------- welcome: Pip & Fifi walk in, come up close, wave and chat ---------- */
+function greetTopic() {
+  const d = new Date(), day = d.getDay(), h = d.getHours(), weekday = day >= 1 && day <= 5;
+  if (weekday && h >= 12) return { en: 'How was nursery today?', pl: 'Jak było w przedszkolu?' };
+  if (weekday && h < 9) return { en: 'Are you going to nursery today?', pl: 'Idziesz dziś do przedszkola?' };
+  return { en: 'How are you today?', pl: 'Jak się masz?' };
+}
+function hearts(n = 9) {
+  for (let i = 0; i < n; i++) setTimeout(() => {
+    const h = document.createElement('div'); h.className = 'heart'; h.textContent = pick(['💕', '💛', '💖', '🧡']);
+    h.style.left = 25 + Math.random() * 50 + 'vw'; h.style.bottom = 30 + Math.random() * 15 + 'vh';
+    document.body.appendChild(h); setTimeout(() => h.remove(), 2800);
+  }, i * 120);
+}
+async function greet() {
+  const back = S.lastGreet && Date.now() - S.lastGreet < 30 * 60 * 1000;   // played a moment ago → short hello
+  S.lastGreet = Date.now(); save();
+  const my = show(`<div class="greet" id="gr">
+      <div class="gwrap gl">${charHTML('fifi')}</div><div class="gwrap gr">${charHTML('pip')}</div>
+      <button class="talk-bubble" id="tb" aria-label="Answer">🎤</button>
+      <button class="yes-btn" id="yes"><span>👍</span>Tak!</button>
+      <button class="skip" id="skip" aria-label="Skip">${ICON.next}</button></div>`, true);
+  const G = $('#gr'), C = $$('.char', G);
+  const alive = () => my === tk && $('#gr') === G;
+  const both = (cls, on) => C.forEach(c => c.classList.toggle(cls, on));
+  const smile = (ms = 1600) => { both('happy', true); setTimeout(() => both('happy', false), ms); };
+  const goHome = () => { if (alive()) home(false); };
+  $('#skip').onclick = goHome;
+
+  /* answering: her voice, or a tap on the bubble / Tak! / a character */
+  let answer = null;
+  const listen = ms => new Promise(res => {
+    G.classList.add('listening'); both('listen', true);
+    const t = setTimeout(() => answer && answer('timeout'), ms);
+    answer = how => { answer = null; clearTimeout(t); G.classList.remove('listening'); both('listen', false); res(how); };
+  });
+  $('#tb').onclick = $('#yes').onclick = () => { unlockAudio(); answer && answer('tap'); };
+  C.forEach(c => c.onclick = () => { if (answer) answer('tap'); else { c.classList.remove('cheer'); void c.offsetWidth; c.classList.add('cheer'); } });
+
+  /* 1. walk in from both sides */
+  void G.offsetWidth; await wait(80);
+  both('walking', true); G.classList.add('walk');
+  await wait(2300); both('walking', false);
+  if (!alive()) return;
+  /* 2. come up close to the screen, wave and smile */
+  G.classList.add('front');
+  await wait(650); if (!alive()) return;
+  smile(2200); waveAll();
+  const hello = back
+    ? [['fifi', 'en', `Yay! You're back, ${KID.en}!`], ['pip', 'pl', `Hura! Jesteś, ${KID.plCall}!`]]
+    : [['fifi', 'en', `Hello, ${KID.en}! Yay!`], ['pip', 'pl', `Cześć, ${KID.plCall}! Hura!`]];
+  if (!await seq(hello, my)) return;
+  if (!back) {
+    hearts(); cheer(); smile();
+    if (!await seq([['fifi', 'en', `We missed you, ${KID.en}!`], ['pip', 'pl', `Tęskniliśmy za tobą, ${KID.plCall}!`]], my)) return;
+  }
+  const micOn = await Mic.open();
+  if (!alive()) return;
+  if (micOn) Mic.watch(() => answer && answer('voice'), (lv, active) => G.style.setProperty('--lv', (1 + Math.min(0.35, (active ? lv : 0) * 7)).toFixed(3)));
+
+  /* 3. chat: how was nursery? (skipped on a quick return) */
+  if (!back) {
+    const q = greetTopic();
+    if (!await seq([['fifi', 'en', q.en], ['pip', 'pl', q.pl]], my)) return;
+    let r = await listen(micOn ? 9000 : 6000);
+    if (!alive()) return;
+    if (r === 'timeout' && micOn) {
+      if (!await seq([['fifi', 'en', pick([`Ooh, tell us, ${KID.en}!`, 'Tell us! Was it fun?'])]], my)) return;
+      r = await listen(7000); if (!alive()) return;
+    }
+    cheer(); smile();
+    const react = r === 'timeout'
+      ? [['fifi', 'en', 'Hihi! Okay!']]
+      : [['fifi', 'en', pick(['Ooh! Wow!', 'Really? Wow!', 'Ooh! Lovely!', 'Wow! Brilliant!'])], ['pip', 'pl', pick(['Super!', 'Ojej! Super!', 'Wow! Ekstra!'])]];
+    if (!await seq(react, my)) return;
+  }
+
+  /* 4. ready to play? → Tak! */
+  G.classList.add('ask-yes');
+  if (!await seq([['fifi', 'en', `Are you ready to play, ${KID.en}?`], ['pip', 'pl', `Gotowa do zabawy, ${KID.plCall}?`]], my)) return;
+  let r = await listen(9000);
+  if (!alive()) return;
+  if (r === 'timeout') {
+    if (!await seq([['fifi', 'en', 'Say yes in Polish!'], ['pip', 'pl', 'Tak!']], my)) return;
+    r = await listen(8000); if (!alive()) return;
+  }
+  cheer(); smile(3000); confettiSmall();
+  if (!await seq([['pip', 'pl', r === 'timeout' ? 'Hura!' : 'Tak! Hura!'], ['fifi', 'en', "Yay! Let's go!"], ['pip', 'pl', 'Bawimy się!']], my)) return;
+  G.classList.remove('ask-yes'); G.classList.add('leave');
+  await wait(750);
+  goHome();
 }
 
 /* ---------- home ---------- */
