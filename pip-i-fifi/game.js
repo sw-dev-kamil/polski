@@ -221,7 +221,13 @@ function bindHome() { const h = $('#home'); if (h) h.onclick = () => home(false)
 function start() {
   show(`<div class="start"><div class="title">Pip &amp; Fifi</div>
     <div class="start-row">${charHTML('fifi')}<button class="big-play" id="go" aria-label="Play">${ICON.play}</button>${charHTML('pip')}</div></div>`);
-  $('#go').onclick = () => { unlockAudio(); pickVoices(); greet(); };
+  $('#go').onclick = () => { unlockAudio(); pickVoices(); greet(); primeSpeech(); };
+}
+/* iOS only lets speech start from a tap. Speak a silent word right inside the ▶ tap,
+   so the welcome lines that come seconds later are allowed to play. */
+function primeSpeech() {
+  if (!hasTTS) return;
+  try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; u.lang = 'en-GB'; speechSynthesis.speak(u); } catch (e) {}
 }
 
 /* ---------- welcome: Pip & Fifi walk in, come up close, wave and chat ---------- */
@@ -263,8 +269,10 @@ async function greet() {
   $('#tb').onclick = $('#yes').onclick = () => { unlockAudio(); answer && answer('tap'); };
   C.forEach(c => c.onclick = () => { if (answer) answer('tap'); else { c.classList.remove('cheer'); void c.offsetWidth; c.classList.add('cheer'); } });
 
-  /* 1. walk in from both sides */
-  void G.offsetWidth; await wait(80);
+  /* 1. walk in from both sides — Fifi calls out straight away (still inside the ▶ tap, so iOS allows speech) */
+  void G.offsetWidth;
+  say('fifi', 'en', back ? `Yoo-hoo! ${KID.en}!` : `Yoo-hoo! ${KID.en}! We're coming!`);
+  await wait(80);
   both('walking', true); G.classList.add('walk');
   await wait(2300); both('walking', false);
   if (!alive()) return;
