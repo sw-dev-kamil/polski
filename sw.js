@@ -1,7 +1,7 @@
 /* Offline cache. When you change any file, bump VERSION so phones pick up the update. */
-const VERSION = 'polski-v2';
+const VERSION = 'polski-v3';
 const FILES = [
-  './', './index.html', './styles.css', './app.js', './data/lessons.js', './manifest.webmanifest',
+  './', './index.html', './styles.css', './app.js', './data/lessons.js', './data/week2.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'
 ];
 

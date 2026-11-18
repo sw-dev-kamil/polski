@@ -314,7 +314,8 @@ function setTab(t) {
 }
 
 function lessonMinutes(l) { return Math.round(l.words.length * 1.8 + 12 + 8 + (l.grammar ? 8 : 0)); }
-function isUnlocked(l) { return l.day === 1 || !!S.done[l.day - 1]; }
+function needsDay(l) { return l.after || (l.day > 1 ? l.day - 1 : 0); }
+function isUnlocked(l) { const n = needsDay(l); return !n || !!S.done[n]; }
 
 /* ---------- HOME ---------- */
 function renderHome() {
@@ -330,7 +331,7 @@ function renderHome() {
   let hero;
   if (!next) {
     hero = `<div class="hero" style="--c:#2E9E62"><div class="big-emoji">🏆</div>
-      <div class="eyebrow">Felicitări</div><h2>Săptămâna 1 terminată!</h2>
+      <div class="eyebrow">Felicitări</div><h2>Toate lecțiile terminate!</h2>
       <p>Continuă cu recapitularea zilnică. Lecții noi vin în curând.</p></div>`;
   } else if (doneToday) {
     hero = `<div class="hero" style="--c:#2E9E62"><div class="big-emoji">🎉</div>
@@ -395,21 +396,27 @@ function renderHome() {
 
 /* ---------- LESSONS LIST ---------- */
 function renderLessons() {
-  app.innerHTML = `<div class="page"><div class="eyebrow">Săptămâna 1</div><h1>Lecții</h1>
-    ${LESSONS.map(l => {
-      const open = isUnlocked(l), done = !!S.done[l.day];
-      return `<button class="list-item press ${open ? '' : 'locked'}" data-day="${l.day}" style="--c:${l.color}">
-        <div class="badge">${open ? l.emoji : '🔒'}</div>
-        <div class="grow"><div class="eyebrow" style="font-size:11px">Ziua ${l.day}${l.grammar ? ' · gramatică' : ''}</div>
-        <h3>${l.title}</h3><div class="sub">${l.subtitle}</div></div>
-        ${done ? '<div class="check">✓</div>' : `<span class="muted small">${lessonMinutes(l)}′</span>`}
-      </button>`;
+  const weeks = window.WEEKS || [{ week: 1, title: 'Lecții', subtitle: '' }];
+  const item = l => {
+    const open = isUnlocked(l), done = !!S.done[l.day];
+    return `<button class="list-item press ${open ? '' : 'locked'}" data-day="${l.day}" style="--c:${l.color}">
+      <div class="badge">${open ? l.emoji : '🔒'}</div>
+      <div class="grow"><div class="eyebrow" style="font-size:11px">Ziua ${l.day}${l.grammar ? ' · gramatică' : ''}</div>
+      <h3>${l.title}</h3><div class="sub">${l.subtitle}</div></div>
+      ${done ? '<div class="check">✓</div>' : `<span class="muted small">${lessonMinutes(l)}′</span>`}
+    </button>`;
+  };
+  app.innerHTML = `<div class="page"><div class="eyebrow">${Object.keys(S.done).length}/${LESSONS.length} terminate</div><h1>Lecții</h1>
+    ${weeks.map(w => {
+      const ls = LESSONS.filter(l => (l.week || 1) === w.week);
+      if (!ls.length) return '';
+      return `<h2>Săptămâna ${w.week} · ${w.title}</h2>${w.subtitle ? `<p class="muted small" style="margin:-6px 0 12px">${w.subtitle}</p>` : ''}${ls.map(item).join('')}`;
     }).join('')}
-    <p class="muted small" style="text-align:center;margin-top:18px">Recomandare: o lecție pe zi + recapitularea. Lecțiile terminate pot fi refăcute oricând.</p>
+    <p class="muted small" style="text-align:center;margin-top:18px">Recomandare: o lecție pe zi + recapitularea. Săptămâna 2 („Cu Mama”) se deschide după Ziua 2. Lecțiile terminate pot fi refăcute oricând.</p>
   </div>`;
   $$('[data-day]').forEach(b => b.onclick = () => {
     const l = LESSONS.find(x => x.day === +b.dataset.day);
-    if (!isUnlocked(l)) return toast('Termină mai întâi Ziua ' + (l.day - 1));
+    if (!isUnlocked(l)) return toast('Termină mai întâi Ziua ' + needsDay(l));
     startLesson(l.day);
   });
 }
@@ -466,7 +473,7 @@ function renderSettings() {
     </div>
     <div class="card"><div class="setting"><div><b>Șterge progresul</b><div class="muted small">începi de la Ziua 1</div></div>
       <button class="btn ghost" id="reset" style="height:40px;color:var(--bad)">Șterge</button></div></div>
-    <p class="muted small" style="text-align:center">Polski · v2 · progresul e salvat doar pe acest telefon</p>
+    <p class="muted small" style="text-align:center">Polski · v3 · progresul e salvat doar pe acest telefon</p>
   </div>`;
   $('#back').onclick = () => setTab('home');
   $$('[data-s]').forEach(b => b.onclick = () => { S.settings.slow = b.dataset.s === '1'; save(); renderSettings(); });
@@ -739,7 +746,7 @@ function startPartner(day) {
       <div class="grow" style="flex:1;font-weight:700">👫 Exersează în doi · Ziua ${day}</div></div>
     <div class="card small" style="background:var(--accent-soft)">
       <div><b>🇷🇴 Pentru tine:</b> partenerul citește întrebarea în poloneză. Răspunde fără să te uiți la răspuns, apoi verifică.</div>
-      <div style="margin-top:8px"><b>🇵🇱 Dla partnera:</b> mów powoli i naturalnie, chwal każdą próbę i poprawiaj najwyżej jeden błąd naraz. Potem zamieńcie się rolami.</div>
+      <div style="margin-top:8px"><b>🇵🇱 Dla osoby mówiącej po polsku</b> (Kamil albo Mama): mów powoli i naturalnie, chwal każdą próbę i poprawiaj najwyżej jeden błąd naraz. Potem zamieńcie się rolami.</div>
     </div>
     <h2 style="margin-top:18px">${les.emoji} ${les.title}</h2>
     ${items.map((it, i) => `<div class="card">
