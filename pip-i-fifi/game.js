@@ -9,10 +9,13 @@ const screen = $('#screen');
 
 /* ---------- saved state ---------- */
 const KEY = 'pipfifi.v1';
-let S = { stickers: [], voice: 'cartoon', excite: true, listen: true, sens: 'normal', kid: null };
+let S = { stickers: [], voice: 'cartoon', excite: true, listen: true, sens: 'normal', kid: null, music: true };
 try { Object.assign(S, JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
 const KID = Object.assign({}, window.KID, S.kid || {});
+const M = window.Music || { prepare() {}, play() {}, stop() {}, duck() {} };
+M.on = S.music !== false; M.getCtx = () => AUDIO;
+M.prepare && M.prepare();                       // render the tunes while the start screen is showing
 
 /* ---------- helpers ---------- */
 const pick = a => a[Math.floor(Math.random() * a.length)];
@@ -94,8 +97,9 @@ function say(who, lang, text) {
     text = kidify(text, lang);
     if (!hasTTS) { talk(who, true); speakingUntil = Infinity; setTimeout(() => { talk(who, false); speakingUntil = performance.now() + 400; res(); }, 400 + text.length * 55); return; }
     let done = false;
-    const fin = () => { if (done) return; done = true; talk(who, false); speakingUntil = performance.now() + 400; res(); };
+    const fin = () => { if (done) return; done = true; M.duck(false); talk(who, false); speakingUntil = performance.now() + 400; res(); };
     const parts = pieces(text);
+    M.duck(true);
     talk(who, true);
     speakingUntil = Infinity;
     parts.forEach((p, i) => {
@@ -227,7 +231,7 @@ function bindHome() { const h = $('#home'); if (h) h.onclick = () => home(false)
 function start() {
   show(`<div class="start"><div class="title">Pip &amp; Fifi</div>
     <div class="start-row">${charHTML('fifi')}<button class="big-play" id="go" aria-label="Play">${ICON.play}</button>${charHTML('pip')}</div></div>`);
-  $('#go').onclick = () => { unlockAudio(); playSilence(); Mic.open(); pickVoices(); greet(); primeSpeech(); };
+  $('#go').onclick = () => { unlockAudio(); playSilence(); Mic.open(); pickVoices(); M.play('walk', .55); greet(); primeSpeech(); };
 }
 /* iPhone on silent mutes web speech. Playing a (silent) media sound inside the tap switches
    iOS to "media playback", which ignores the silent switch — like a video does.
@@ -242,7 +246,7 @@ function playSilence() {
       v.setUint16(22, 1, true); v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true);
       v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
       silentEl = new Audio(URL.createObjectURL(new Blob([b], { type: 'audio/wav' })));
-      silentEl.setAttribute('playsinline', ''); silentEl.loop = false;
+      silentEl.setAttribute('playsinline', ''); silentEl.loop = true;   // keeps iOS in media mode while music plays
     }
     const p = silentEl.play(); if (p && p.catch) p.catch(() => {});
   } catch (e) {}
@@ -312,6 +316,7 @@ async function greet() {
     hearts(); cheer(); smile();
     if (!await seq([['fifi', 'en', `We missed you, ${KID.en}!`], ['pip', 'pl', `Tęskniliśmy za tobą, ${KID.plCall}!`]], my)) return;
   }
+  M.stop(1.5);                                  // music off before we listen for her
   const micOn = await Mic.open();
   if (!alive()) return;
   if (micOn) Mic.watch(() => answer && answer('voice'), (lv, active) => G.style.setProperty('--lv', (1 + Math.min(0.35, (active ? lv : 0) * 7)).toFixed(3)));
@@ -368,6 +373,7 @@ function home(greet) {
   $$('.tile').forEach(b => b.onclick = () => openTile(b.dataset.t, b));
   parentGate($('#gear'));
   waveAll();
+  M.play('menu', .32);                           // gentle music while she chooses
   if (greet) seq([['fifi', 'en', `Hello, ${KID.en}! Yay!`], ['pip', 'pl', `Cześć, ${KID.plCall}! Hura!`],
     ['fifi', 'en', 'Ooh! What shall we play?'], ['pip', 'pl', 'W co się bawimy?']], my);
   else seq([['pip', 'pl', 'W co się bawimy?']], my);
@@ -376,7 +382,7 @@ let opening = false;
 async function openTile(id, el) {
   if (opening) return; opening = true; unlockAudio();
   const t = TILES.find(x => x.id === id);
-  hush(); const my = tk;
+  hush(); const my = tk; M.stop(1.2);
   el.style.transform = 'scale(1.12)';
   const go = { colours: () => pickGame('colours'), animals: () => pickGame('animals'), count: countGame,
     friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), stickers: stickerBook }[id];
@@ -603,6 +609,8 @@ function parentPanel() {
       <div style="display:flex;gap:6px"><select id="ve" class="vsel">${voiceOptions('en')}</select><button class="pbtn" id="tf">▶</button></div></div>
     <div class="row"><div><b>Pip's voice</b><div class="small">Polish</div></div>
       <div style="display:flex;gap:6px"><select id="vp" class="vsel">${voiceOptions('pl')}</select><button class="pbtn" id="tp">▶</button></div></div>
+    <div class="row"><div><b>Music</b><div class="small">walk-in tune and menu music</div></div>
+      <div class="seg">${segBtn('music', 'true', 'On')}${segBtn('music', 'false', 'Off')}</div></div>
     <div class="row"><div><b>Excited voices</b><div class="small">bouncy cheers, rising questions</div></div>
       <div class="seg">${segBtn('excite', 'true', 'On')}${segBtn('excite', 'false', 'Off')}</div></div>
     <div class="row"><div><b>Listen for her voice</b><div class="small">uses the microphone on "your turn"</div></div>
@@ -615,7 +623,8 @@ function parentPanel() {
     <div class="row" style="border:0"><button class="pbtn" id="tv">Test voices</button><button class="pbtn main" id="cl">Done</button></div></div>`;
   document.body.appendChild(el);
   $$('.seg button', el).forEach(b => b.onclick = () => {
-    const k = b.dataset.k; S[k] = (k === 'listen' || k === 'excite') ? b.dataset.v === 'true' : b.dataset.v; save();
+    const k = b.dataset.k; S[k] = (k === 'listen' || k === 'excite' || k === 'music') ? b.dataset.v === 'true' : b.dataset.v; save();
+    if (k === 'music') { M.on = S.music; if (!S.music) M.stop(.3); }
     $$(`.seg button[data-k="${k}"]`, el).forEach(x => x.classList.toggle('on', x === b));
   });
   $('#ve', el).onchange = e => { S.voiceEn = e.target.value; save(); pickVoices(); hush(); say('fifi', 'en', `Hello, ${$('#n1', el).value}! I'm Fifi! Yay!`); };
@@ -633,6 +642,10 @@ function parentPanel() {
 }
 
 /* ---------- boot ---------- */
+document.addEventListener('visibilitychange', () => {   // app in background → music pauses
+  if (!AUDIO) return;
+  try { document.hidden ? AUDIO.suspend() : AUDIO.resume(); } catch (e) {}
+});
 start();
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();

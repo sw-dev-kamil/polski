@@ -1,6 +1,6 @@
 /* Offline cache. Bump VERSION when files change. */
-const VERSION = 'pipfifi-v7';
-const FILES = ['./', './index.html', './style.css', './game.js', './characters.js', './content.js', './manifest.webmanifest',
+const VERSION = 'pipfifi-v8';
+const FILES = ['./', './index.html', './style.css', './game.js', './characters.js', './content.js', './music.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 self.addEventListener('install', e => e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting())));
 self.addEventListener('activate', e => e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== VERSION).map(x => caches.delete(x)))).then(() => self.clients.claim())));
