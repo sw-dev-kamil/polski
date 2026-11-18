@@ -203,3 +203,4 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   .greet.front .gr { transform: translateX(22%) scale(1.3); }
   .greet.front .gwrap { bottom: 2vh; }
 }
+.big-play.asking { opacity: .45; animation: none; }   /* while the iPad asks for the microphone */

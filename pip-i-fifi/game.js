@@ -159,7 +159,7 @@ const Mic = {
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: true } });
       unlockAudio();
-      if (AUDIO.state === 'suspended') { try { await AUDIO.resume(); } catch (e) {} }
+      if (AUDIO.state === 'suspended') { try { await Promise.race([AUDIO.resume(), wait(300)]); } catch (e) {} } // before a tap iOS may not resume yet — fine
       this.an = AUDIO.createAnalyser(); this.an.fftSize = 1024;
       AUDIO.createMediaStreamSource(this.stream).connect(this.an);
       this.buf = new Float32Array(this.an.fftSize);
@@ -233,6 +233,12 @@ function bindHome() { const h = $('#home'); if (h) h.onclick = () => home(false)
 function start() {
   show(`<div class="start"><div class="title">Pip &amp; Fifi</div>
     <div class="start-row">${charHTML('fifi')}<button class="big-play" id="go" aria-label="Play">${ICON.play}</button>${charHTML('pip')}</div></div>`);
+  /* Ask for the microphone NOW, on the start screen. Saying "Allow" switches the iPhone's sound
+     to call mode, which cuts off anything playing — so it must happen before the welcome starts. */
+  if (S.listen) {
+    const go = $('#go'); go.classList.add('asking');
+    Mic.open().finally(() => go.classList.remove('asking'));
+  }
   $('#go').onclick = () => { unlockAudio(); playSilence(); Mic.open(); pickVoices(); M.play('walk', .55); greet(); primeSpeech(); };
 }
 /* iPhone on silent mutes web speech. Playing a (silent) media sound inside the tap switches
