@@ -9,7 +9,7 @@ const screen = $('#screen');
 
 /* ---------- saved state ---------- */
 const KEY = 'pipfifi.v1';
-let S = { stickers: [], voice: 'cartoon', excite: true, listen: true, sens: 'normal', kid: null, music: true, plOnly: false };
+let S = { stickers: [], voice: 'cartoon', excite: true, listen: true, sens: 'normal', kid: null, music: true, plOnly: false, recVoices: true };
 try { Object.assign(S, JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
 const KID = Object.assign({}, window.KID, S.kid || {});
@@ -29,11 +29,11 @@ const ICON = {
 };
 
 function praiseEN() {
-  if (Math.random() < 0.35) return pick([`Wow, ${KID.en}! Brilliant!`, `Yay! Well done, ${KID.en}!`, `Woohoo! Go ${KID.en}!`]);
+  if (Math.random() < 0.35) return pick([`Wow! Brilliant, ${KID.en}!`, `Yay! Well done, ${KID.en}!`, `Woohoo! Go ${KID.en}!`]);
   return pick(['Woohoo!', 'Yay! Well done!', 'Wow! Brilliant!', 'Hooray!', 'Amazing!', 'You did it! Yippee!']);
 }
 function praisePL() {
-  if (Math.random() < 0.35) return pick([`Brawo, ${KID.plCall}! Super!`, `Hura! Świetnie, ${KID.plCall}!`, `Wow! Pięknie, ${KID.plCall}!`]);
+  if (Math.random() < 0.35) return pick([`Super! Brawo, ${KID.plCall}!`, `Hura! Świetnie, ${KID.plCall}!`, `Wow! Pięknie, ${KID.plCall}!`]);
   return pick(['Brawo!', 'Hura! Super!', 'Wow! Świetnie!', 'Ojej, pięknie!', 'Juhu! Brawo!', 'Tak jest! Super!']);
 }
 
@@ -92,9 +92,59 @@ function prosody(piece, i, n, who, lang) {
   } else { rate = lang === 'pl' ? 0.8 : 0.9; }
   return { pitch: Math.max(0.5, Math.min(2, pitch)), rate };
 }
-function say(who, lang, text) {
+/* ---------- recorded voices: Maisie (Fifi, English) + Zofia (Pip, Polish), made on Kamil's Mac ----------
+   Every sentence is split into pieces ("Gdzie jest czapka?" / "Załóż czapkę!"); each piece = audio/<id>.mp3.
+   If any piece of a line has no file yet, the whole line uses the iPad voice (no mixing) and the
+   missing pieces are noted for the next top-up (grown-up panel). */
+const lineId = (lang, text) => { let h = 0x811c9dc5; const t = lang + '|' + text; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16).padStart(8, '0'); };
+const REC = { have: new Set(), raw: new Map(), buf: new Map(), playing: [], stop: null };
+const MISS_KEY = 'pipfifi.missing';
+function noteMissing(lang, list) {
+  try { const m = JSON.parse(localStorage.getItem(MISS_KEY) || '{}'); list.forEach(t => { m[lineId(lang, t)] = [lang, t]; }); localStorage.setItem(MISS_KEY, JSON.stringify(m)); } catch (e) {}
+}
+async function recPreload() {                // during the start screen: fetch every file (the service worker keeps them offline)
+  try { REC.have = new Set(await (await fetch('audio/index.json', { cache: 'no-cache' })).json()); } catch (e) { return; }
+  const ids = [...REC.have]; let k = 0;
+  const worker = async () => { while (k < ids.length) { const id = ids[k++]; if (REC.raw.has(id)) continue;
+    try { const r = await fetch('audio/' + id + '.mp3'); if (r.ok) REC.raw.set(id, await r.arrayBuffer()); } catch (e) {} } };
+  await Promise.all([worker(), worker(), worker(), worker()]);
+}
+function recBuf(id) {
+  if (REC.buf.has(id)) return Promise.resolve(REC.buf.get(id));
+  const go = raw => new Promise(res => { try { AUDIO.decodeAudioData(raw.slice(0), b => { REC.buf.set(id, b); res(b); }, () => res(null)); } catch (e) { res(null); } });
+  if (REC.raw.has(id)) return go(REC.raw.get(id));
+  return fetch('audio/' + id + '.mp3').then(r => r.ok ? r.arrayBuffer() : null).then(raw => raw ? (REC.raw.set(id, raw), go(raw)) : null).catch(() => null);
+}
+function recStop() { REC.playing.forEach(s => { try { s.stop(); } catch (e) {} }); REC.playing = []; if (REC.stop) { const f = REC.stop; REC.stop = null; f(); } }
+async function recPlay(ids) {                // resolves true when finished (or stopped), false if it couldn't play
+  if (!AUDIO) return false;
+  const bufs = await Promise.all(ids.map(recBuf));
+  if (bufs.some(b => !b)) return false;
   return new Promise(res => {
-    text = kidify(text, lang);
+    let t = AUDIO.currentTime + 0.02;
+    bufs.forEach((b, i) => { const s = AUDIO.createBufferSource(); s.buffer = b; s.connect(AUDIO.destination); s.start(t); REC.playing.push(s); t += b.duration + (i < bufs.length - 1 ? 0.08 : 0); });
+    const timer = setTimeout(() => { REC.stop = null; REC.playing = []; res(true); }, (t - AUDIO.currentTime) * 1000 + 30);
+    REC.stop = () => { clearTimeout(timer); res(true); };
+  });
+}
+
+function say(who, lang, text) {
+  text = kidify(text, lang);
+  const parts = pieces(text), ids = parts.map(p => lineId(lang, p));
+  if (S.recVoices !== false && AUDIO && REC.have.size) {
+    const missing = parts.filter((p, i) => !REC.have.has(ids[i]));
+    if (!missing.length) return new Promise(async res => {
+      recStop(); M.duck(true); talk(who, true); speakingUntil = Infinity;
+      const ok = await recPlay(ids);
+      if (!ok) { M.duck(false); talk(who, false); return say2(who, lang, text).then(res); }
+      M.duck(false); talk(who, false); speakingUntil = performance.now() + 400; res();
+    });
+    noteMissing(lang, missing);
+  }
+  return say2(who, lang, text);
+}
+function say2(who, lang, text) {               // the iPad's own voice
+  return new Promise(res => {
     if (!hasTTS) { talk(who, true); speakingUntil = Infinity; setTimeout(() => { talk(who, false); speakingUntil = performance.now() + 400; res(); }, 400 + text.length * 55); return; }
     let done = false;
     const fin = () => { if (done) return; done = true; M.duck(false); talk(who, false); speakingUntil = performance.now() + 400; res(); };
@@ -125,7 +175,7 @@ async function seq(lines, my = tk) {
   }
   return my === tk;
 }
-function hush() { tk++; if (hasTTS) speechSynthesis.cancel(); talk(null, false); speakingUntil = performance.now() + 300; }
+function hush() { tk++; if (hasTTS) speechSynthesis.cancel(); recStop(); talk(null, false); speakingUntil = performance.now() + 300; }
 function cheer(who) {
   $$(who ? `.char[data-who="${who}"]` : '.char').forEach(c => { c.classList.remove('cheer'); void c.offsetWidth; c.classList.add('cheer'); setTimeout(() => c.classList.remove('cheer'), 1200); });
 }
@@ -318,7 +368,7 @@ async function greet() {
   smile(2200); waveAll();
   const hello = back
     ? [['fifi', 'en', `Yay! You're back, ${KID.en}!`], ['pip', 'pl', `Hura! Jesteś, ${KID.plCall}!`]]
-    : [['fifi', 'en', `Hello, ${KID.en}! Yay!`], ['pip', 'pl', `Cześć, ${KID.plCall}! Hura!`]];
+    : [['fifi', 'en', `Yay! Hello, ${KID.en}!`], ['pip', 'pl', `Hura! Cześć, ${KID.plCall}!`]];
   if (!await seq(hello, my)) return;
   if (!back) {
     hearts(); cheer(); smile();
@@ -383,7 +433,7 @@ function home(greet) {
   parentGate($('#gear'));
   waveAll();
   M.play('menu', .32);                           // gentle music while she chooses
-  if (greet) seq([['fifi', 'en', `Hello, ${KID.en}! Yay!`], ['pip', 'pl', `Cześć, ${KID.plCall}! Hura!`],
+  if (greet) seq([['fifi', 'en', `Yay! Hello, ${KID.en}!`], ['pip', 'pl', `Hura! Cześć, ${KID.plCall}!`],
     ['fifi', 'en', 'Ooh! What shall we play?'], ['pip', 'pl', 'W co się bawimy?']], my);
   else seq([['pip', 'pl', 'W co się bawimy?']], my);
 }
@@ -753,7 +803,7 @@ function reward(again) {
   confetti(); cheer();
   $('#rh').onclick = () => home(false);
   $('#ra').onclick = again;
-  seq([['fifi', 'en', `Wow! A sticker for you, ${KID.en}! Yay!`], ['pip', 'pl', `Naklejka dla ciebie! Hura! Brawo, ${KID.plCall}!`]], my).then(ok => ok && cheer());
+  seq([['fifi', 'en', `Wow! Yay! A sticker for you, ${KID.en}!`], ['pip', 'pl', `Hura! Naklejka dla ciebie! Brawo, ${KID.plCall}!`]], my).then(ok => ok && cheer());
 }
 function stickerBook() {
   const my = show(`${topbar(0, 0)}<div class="book">${window.STICKERS.map(s =>
@@ -794,6 +844,8 @@ function parentPanel() {
       <div style="display:flex;gap:6px"><select id="ve" class="vsel">${voiceOptions('en')}</select><button class="pbtn" id="tf">▶</button></div></div>
     <div class="row"><div><b>Pip's voice</b><div class="small">Polish</div></div>
       <div style="display:flex;gap:6px"><select id="vp" class="vsel">${voiceOptions('pl')}</select><button class="pbtn" id="tp">▶</button></div></div>
+    <div class="row"><div><b>Voices</b><div class="small">recorded Maisie &amp; Zofia: ${REC.have.size} pieces · missing: ${Object.keys(JSON.parse(localStorage.getItem(MISS_KEY) || '{}')).length}</div></div>
+      <div class="seg">${segBtn('recVoices', 'true', 'Recorded')}${segBtn('recVoices', 'false', 'iPad')}</div></div>
     <div class="row"><div><b>Language</b><div class="small">Polish only = test what she knows (just Pip asks)</div></div>
       <div class="seg">${segBtn('plOnly', 'false', 'Both')}${segBtn('plOnly', 'true', 'Polish only')}</div></div>
     <div class="row"><div><b>Music</b><div class="small">walk-in tune and menu music</div></div>
@@ -810,14 +862,14 @@ function parentPanel() {
     <div class="row" style="border:0"><button class="pbtn" id="tv">Test voices</button><button class="pbtn main" id="cl">Done</button></div></div>`;
   document.body.appendChild(el);
   $$('.seg button', el).forEach(b => b.onclick = () => {
-    const k = b.dataset.k; S[k] = (k === 'listen' || k === 'excite' || k === 'music' || k === 'plOnly') ? b.dataset.v === 'true' : b.dataset.v; save();
+    const k = b.dataset.k; S[k] = (k === 'listen' || k === 'excite' || k === 'music' || k === 'plOnly' || k === 'recVoices') ? b.dataset.v === 'true' : b.dataset.v; save();
     if (k === 'music') { M.on = S.music; if (!S.music) M.stop(.3); }
     $$(`.seg button[data-k="${k}"]`, el).forEach(x => x.classList.toggle('on', x === b));
   });
-  $('#ve', el).onchange = e => { S.voiceEn = e.target.value; save(); pickVoices(); hush(); say('fifi', 'en', `Hello, ${$('#n1', el).value}! I'm Fifi! Yay!`); };
-  $('#vp', el).onchange = e => { S.voicePl = e.target.value; save(); pickVoices(); hush(); say('pip', 'pl', `Cześć, ${$('#n3', el).value}! Jestem Pip! Hura!`); };
-  $('#tf', el).onclick = () => { hush(); say('fifi', 'en', `Hello, ${$('#n1', el).value}! I'm Fifi! Yay!`); };
-  $('#tp', el).onclick = () => { hush(); say('pip', 'pl', `Cześć, ${$('#n3', el).value}! Jestem Pip! Hura!`); };
+  $('#ve', el).onchange = e => { S.voiceEn = e.target.value; save(); pickVoices(); hush(); say('fifi', 'en', `Yay! Hello, ${$('#n1', el).value}! I'm Fifi!`); };
+  $('#vp', el).onchange = e => { S.voicePl = e.target.value; save(); pickVoices(); hush(); say('pip', 'pl', `Hura! Cześć, ${$('#n3', el).value}! Jestem Pip!`); };
+  $('#tf', el).onclick = () => { hush(); say('fifi', 'en', `Yay! Hello, ${$('#n1', el).value}! I'm Fifi!`); };
+  $('#tp', el).onclick = () => { hush(); say('pip', 'pl', `Hura! Cześć, ${$('#n3', el).value}! Jestem Pip!`); };
   $('#tv', el).onclick = () => { seq([['fifi', 'en', `Hello, ${$('#n1', el).value}! Yay! Well done!`], ['pip', 'pl', `Cześć, ${$('#n3', el).value}! Hura! Brawo!`]]); };
   let armed = false;
   $('#rs', el).onclick = e => { if (!armed) { armed = true; e.target.textContent = 'Sure?'; return; } S.stickers = []; save(); e.target.textContent = 'Done'; };
@@ -829,10 +881,12 @@ function parentPanel() {
 }
 
 /* ---------- boot ---------- */
+window.PF = { lineId, pieces };
 document.addEventListener('visibilitychange', () => {   // app in background → music pauses
   if (!AUDIO) return;
   try { document.hidden ? AUDIO.suspend() : AUDIO.resume(); } catch (e) {}
 });
+recPreload();
 start();
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
