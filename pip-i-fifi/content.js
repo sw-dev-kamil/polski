@@ -65,13 +65,39 @@ window.NEEDS = [
 
 window.STICKERS = ["🦄","🌈","🐞","🦋","🌻","🍓","🐳","🚀","🐥","🦔","🦊","🍭","🌟","🐰","🐼","🐢","🍩","🧁","🐬","🌸","🎀","🐙","🦕","🐝"];
 
-/* Getting dressed (dress-up game). acc = form after "Załóż / Zdejmij" ("Załóż czapkę!").
-   plural: true → "Gdzie są …?", "To są …". Order = how kids dress at nursery. */
-window.CLOTHES = [
-  { id: "spodnie",    en: "trousers", pl: "spodnie",    acc: "spodnie",    plural: true },
-  { id: "kurtka",     en: "jacket",   pl: "kurtka",     acc: "kurtkę",     plural: false },
-  { id: "buty",       en: "boots",    pl: "buty",       acc: "buty",       plural: true },
-  { id: "szalik",     en: "scarf",    pl: "szalik",     acc: "szalik",     plural: false },
-  { id: "czapka",     en: "hat",      pl: "czapka",     acc: "czapkę",     plural: false },
-  { id: "rekawiczki", en: "gloves",   pl: "rękawiczki", acc: "rękawiczki", plural: true }
-];
+/* Getting dressed (dress-up game), by season.
+   acc = form after "Załóż / Zdejmij" ("Załóż czapkę!"). take: true → "Weź … / Odłóż …" (umbrella, bucket).
+   plural: true → "Gdzie są …?", "To są …". clothes = the order kids dress in; layers = drawing order (bottom → top). */
+window.SEASONS = {
+  winter: { pl: "zima", en: "winter", e: "❄️", s: "#D8ECFA",
+    layers: ["spodnie", "buty", "kurtka", "szalik", "rekawiczki", "czapka"],
+    clothes: [
+      { id: "spodnie",    en: "trousers", pl: "spodnie",    acc: "spodnie",    plural: true },
+      { id: "kurtka",     en: "jacket",   pl: "kurtka",     acc: "kurtkę" },
+      { id: "buty",       en: "boots",    pl: "buty",       acc: "buty",       plural: true },
+      { id: "szalik",     en: "scarf",    pl: "szalik",     acc: "szalik" },
+      { id: "czapka",     en: "hat",      pl: "czapka",     acc: "czapkę" },
+      { id: "rekawiczki", en: "gloves",   pl: "rękawiczki", acc: "rękawiczki", plural: true }
+    ] },
+  autumn: { pl: "jesień", en: "autumn", e: "🍂", s: "#F8DDC2",
+    layers: ["spodnie", "sweter", "kalosze", "plaszcz", "kapelusz-deszcz", "parasol"],
+    clothes: [
+      { id: "spodnie",         en: "trousers", pl: "spodnie",  acc: "spodnie",  plural: true },
+      { id: "sweter",          en: "jumper",   pl: "sweter",   acc: "sweter" },
+      { id: "kalosze",         en: "wellies",  pl: "kalosze",  acc: "kalosze",  plural: true },
+      { id: "plaszcz",         en: "raincoat", pl: "płaszcz",  acc: "płaszcz" },
+      { id: "kapelusz-deszcz", en: "rain hat", pl: "kapelusz", acc: "kapelusz" },
+      { id: "parasol",         en: "umbrella", pl: "parasol",  acc: "parasol",  take: true }
+    ] },
+  summer: { pl: "lato", en: "summer", e: "☀️", s: "#FFF0B8",
+    layers: ["spodenki", "koszulka", "klapki", "okulary", "kapelusz-slonce", "wiaderko"],
+    clothes: [
+      { id: "spodenki",        en: "shorts",      pl: "spodenki", acc: "spodenki", plural: true },
+      { id: "koszulka",        en: "T-shirt",     pl: "koszulka", acc: "koszulkę" },
+      { id: "klapki",          en: "flip-flops",  pl: "klapki",   acc: "klapki",   plural: true },
+      { id: "kapelusz-slonce", en: "sun hat",     pl: "kapelusz", acc: "kapelusz" },
+      { id: "okulary",         en: "sunglasses",  pl: "okulary",  acc: "okulary",  plural: true },
+      { id: "wiaderko",        en: "bucket",      pl: "wiaderko", acc: "wiaderko", take: true }
+    ] }
+};
+window.CLOTHES = window.SEASONS.winter.clothes;     // (older code)

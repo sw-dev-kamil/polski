@@ -266,3 +266,24 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .dl.ok span { color: #2F8F52; }
 .dl.hide { opacity: 0; }
 .big-play.loading { opacity: .45; animation: none; }
+
+/* ============ seasons (dress-up) ============ */
+.menu.seasons { max-width: 90vmin; grid-template-columns: repeat(3, 1fr); }
+.tile.picked { animation: pop .4s cubic-bezier(.3,1.6,.5,1); box-shadow: 0 0 0 1.2vmin #FFE066, 0 1.2vmin 0 rgba(0,0,0,.08); }
+body.rainy #screen::before { content: ''; position: fixed; inset: 0; background: rgba(90,110,140,.35); pointer-events: none; z-index: 0; transition: opacity 1s; }
+body.sunny #screen::before { content: ''; position: fixed; inset: 0; background: radial-gradient(circle at 85% 12%, rgba(255,230,120,.55), transparent 55%); pointer-events: none; z-index: 0; }
+.drop { position: fixed; top: -6vh; width: .45vmin; height: 4.5vmin; border-radius: 99px; background: linear-gradient(transparent, #8EC5FF); z-index: 20; pointer-events: none;
+  animation: dropFall linear forwards; opacity: .85; }
+@keyframes dropFall { to { transform: translate(-3vw, 112vh); } }
+.leaf { color: initial; text-shadow: none; }
+.puddle { position: absolute; left: 50%; bottom: -2vh; width: 140%; height: 7vh; transform: translateX(-50%); border-radius: 50%; z-index: -1;
+  background: radial-gradient(ellipse at center, #7FB3E6 0 55%, #5E95CC 70%, transparent 72%); animation: pop .6s ease; }
+.kid.hop .puddle { animation: splash .55s ease-in-out infinite; }
+@keyframes splash { 50% { transform: translateX(-50%) translateY(4vh) scaleX(1.12); } }
+.flutter { position: fixed; left: -8vw; font-size: 6vmin; z-index: 20; pointer-events: none; animation: flutter linear forwards; }
+@keyframes flutter { 25% { transform: translate(30vw, -6vh) rotate(8deg); } 50% { transform: translate(60vw, 4vh) rotate(-8deg); }
+  75% { transform: translate(85vw, -5vh) rotate(6deg); } 100% { transform: translate(115vw, 2vh); } }
+.menu.seasons { top: 20vh; }
+.seasons .tile { width: 26vmin; height: 28vmin; background: linear-gradient(#fff 55%, var(--s)); }
+.seasons .tile .e { font-size: 13vmin; }
+.seasons .tile .l { font-size: 3.6vmin; }

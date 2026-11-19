@@ -272,7 +272,7 @@ function confetti() {
    SCREENS
    ===================================================================== */
 /* The mic is never switched off between screens: on iPhone/iPad every new request = a new permission popup. */
-function show(html, keepMic) { hush(); Mic.unwatch(); screen.innerHTML = `<div class="view">${html}</div>`; return tk; }
+function show(html, keepMic) { hush(); Mic.unwatch(); document.body.classList.remove('rainy', 'sunny'); screen.innerHTML = `<div class="view">${html}</div>`; return tk; }
 const topbar = (dots, done) => `<div class="topbar">
   <button class="round-btn" id="home" aria-label="Home">🏠</button>
   ${dots ? `<div class="dots">${Array.from({ length: dots }, (_, i) => `<i class="${i < done ? 'on' : ''}"></i>`).join('')}</div>` : '<span></span>'}
@@ -546,7 +546,7 @@ async function openTile(id, el) {
   hush(); const my = tk; M.stop(1.2);
   el.style.transform = 'scale(1.12)';
   const go = { colours: () => pickGame('colours'), animals: () => pickGame('animals'), count: countGame,
-    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), dress: () => dressGame(), stickers: stickerBook }[id];
+    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), dress: () => seasonMenu(), stickers: stickerBook }[id];
   await Promise.race([seq([['fifi', 'en', 'Yay! ' + t.en + '!'], ['pip', 'pl', 'Hura! ' + t.pl + '!']], my), wait(3200)]);
   opening = false;
   if (my === tk) go();
@@ -663,28 +663,73 @@ function snow(sec = 5) {
     document.body.appendChild(f); setTimeout(() => f.remove(), 6500);
   }, Math.random() * sec * 1000);
 }
-function dressGame(mode) {
-  const C = window.CLOTHES, A = window.DRESS_ART, byId = id => C.find(c => c.id === id);
-  mode = mode || (S.dressNext === 'off' ? 'off' : 'on');        // alternates: get dressed → next time take off
-  S.dressNext = mode === 'on' ? 'off' : 'on'; save();
+/* season choice: ❄️ zima, 🍂 jesień, ☀️ lato */
+function seasonMenu() {
+  const SE = window.SEASONS;
+  const my = show(`${topbar(0, 0)}<div class="menu seasons">${Object.keys(SE).map(k =>
+    `<button class="tile" data-s="${k}" style="--s:${SE[k].s}"><span class="e">${SE[k].e}</span><span class="l">${cap(SE[k].pl)}</span></button>`).join('')}</div>${chars()}`);
+  bindHome();
+  $$('.seasons .tile').forEach(t => t.onclick = async () => {
+    unlockAudio(); hush(); const k = t.dataset.s, se = SE[k], tt = tk;
+    t.classList.add('picked');
+    await seq([['pip', 'pl', cap(se.pl) + '!'], ...(S.plOnly ? [] : [['fifi', 'en', cap(se.en) + '!']])], tt);
+    if (tt === tk) dressGame(k);
+  });
+  $('#again').onclick = () => { hush(); seq([['pip', 'pl', 'Zima, jesień czy lato?'], ...(S.plOnly ? [] : [['fifi', 'en', 'Winter, autumn or summer?']])]); };
+  waveAll();
+  seq([['pip', 'pl', `Zima, jesień czy lato, ${KID.plCall}?`], ...(S.plOnly ? [] : [['fifi', 'en', 'Winter, autumn or summer?']])], my);
+}
+/* outside after dressing: snow (winter), rain & puddles (autumn), sunshine (summer) */
+function rain(sec = 14) {
+  for (let i = 0; i < 90; i++) setTimeout(() => {
+    const f = document.createElement('div'); f.className = 'drop';
+    f.style.left = Math.random() * 100 + 'vw'; f.style.animationDuration = (.6 + Math.random() * .5) + 's';
+    document.body.appendChild(f); setTimeout(() => f.remove(), 1400);
+  }, Math.random() * sec * 1000);
+  for (let i = 0; i < 12; i++) setTimeout(() => {
+    const f = document.createElement('div'); f.className = 'flake leaf'; f.textContent = pick(['🍂', '🍁', '🍂']);
+    f.style.left = Math.random() * 100 + 'vw'; f.style.fontSize = (3 + Math.random() * 2) + 'vmin'; f.style.animationDuration = (4 + Math.random() * 3) + 's';
+    document.body.appendChild(f); setTimeout(() => f.remove(), 7500);
+  }, Math.random() * sec * 1000);
+}
+function sunshine(sec = 14) {
+  for (let i = 0; i < 10; i++) setTimeout(() => {
+    const f = document.createElement('div'); f.className = 'flutter'; f.textContent = pick(['🦋', '🦋', '🌼', '🐝']);
+    f.style.top = 20 + Math.random() * 50 + 'vh'; f.style.animationDuration = (6 + Math.random() * 4) + 's';
+    document.body.appendChild(f); setTimeout(() => f.remove(), 10500);
+  }, Math.random() * sec * 1000);
+}
+const OUTSIDE = {
+  winter: { song: 'snow', fx: snow, go: ['Hura! Idziemy na dwór!', `Yay! All dressed, ${'{kid}'}! Let's go outside!`], fun: ['Śnieg! Hura!', 'Wheee! Snow!'] },
+  autumn: { song: 'walk', fx: rain, go: ['Hura! Idziemy na dwór!', "Yay! All dressed! Let's jump in the puddles!"], fun: ['Kałuże! Hop, hop!', 'Splash! Splash!'], cls: 'rainy' },
+  summer: { song: 'sun', fx: sunshine, go: ['Hura! Idziemy na dwór!', "Yay! All dressed! Let's play in the sunshine!"], fun: ['Słoneczko! Hura!', 'Wheee! Sunshine!'], cls: 'sunny' }
+};
+function dressGame(season, mode) {
+  season = season || S.lastSeason || 'winter'; S.lastSeason = season;
+  const SE = window.SEASONS[season], C = SE.clothes, A = window.DRESS_ART, byId = id => C.find(c => c.id === id);
+  S.dressNext = (S.dressNext && typeof S.dressNext === 'object') ? S.dressNext : {};
+  mode = mode || (S.dressNext[season] === 'off' ? 'off' : 'on');   // per season: get dressed → next time take off
+  S.dressNext[season] = mode === 'on' ? 'off' : 'on'; save();
   const dressing = mode === 'on';
-  const order = dressing ? C.map(c => c.id) : ['czapka', 'rekawiczki', 'szalik', 'kurtka', 'buty', 'spodnie'];
+  const order = dressing ? C.map(c => c.id) : C.map(c => c.id).reverse();
   const worn = new Set(dressing ? [] : order);
   let step = 0, busy = true, hintT = 0;
   const my = show(`${ROOM}${topbar(order.length, 0)}
-    <div class="kid" id="kid">${A.kid([...worn])}</div>
+    <div class="kid" id="kid">${A.kid([...worn], SE.layers)}</div>
     <div class="toybox"><div class="tb-back"></div><div class="tb-items">${shuffle(C.map(c => c.id)).map(id =>
       `<div class="item ${worn.has(id) ? 'gone' : ''}" data-id="${id}" style="--r:${(Math.random() * 16 - 8).toFixed(1)}deg">${A.item(id)}</div>`).join('')}</div>
       <div class="tb-front"></div></div>${chars()}`);
   bindHome();
   const kid = $('#kid'), alive = () => $('#kid') === kid;
+  const putPL = c => c.take ? `Weź ${c.acc}!` : `Załóż ${c.acc}!`, putEN = c => c.take ? `Take the ${c.en}!` : `Put on the ${c.en}!`;
+  const offPL = c => c.take ? `Odłóż ${c.acc}!` : `Zdejmij ${c.acc}!`, offEN = c => c.take ? `Put the ${c.en} away!` : `Take off the ${c.en}!`;
   const target = () => byId(order[step]);
   const jest = c => c.plural ? 'są' : 'jest';
   const where = c => `Gdzie ${jest(c)} ${c.pl}?`;
   const ask = c => {
     const bi = !S.plOnly;                         // Fifi (English) + Pip (Polish); Polish-only = test mode (grown-up panel)
-    if (dressing) return [['pip', 'pl', `${where(c)} Załóż ${c.acc}!`], ...(bi ? [['fifi', 'en', `Put on the ${c.en}!`]] : [])];
-    return [['pip', 'pl', `Zdejmij ${c.acc}!`], ...(bi ? [['fifi', 'en', `Take off the ${c.en}!`]] : [])];
+    if (dressing) return [['pip', 'pl', `${where(c)} ${putPL(c)}`], ...(bi ? [['fifi', 'en', putEN(c)]] : [])];
+    return [['pip', 'pl', offPL(c)], ...(bi ? [['fifi', 'en', offEN(c)]] : [])];
   };
   const hintLater = () => {                       // after a while, the right one glows
     clearTimeout(hintT);
@@ -711,19 +756,22 @@ function dressGame(mode) {
     busy = true; clearHint(); hush(); const t = tk;
     kid.classList.add('happy'); cheer();
     if (dressing) {
-      if (!await seq([['fifi', 'en', `Yay! All dressed, ${KID.en}! Let's go outside!`], ['pip', 'pl', 'Hura! Idziemy na dwór!']], t)) return;
+      const O = OUTSIDE[season];
+      if (!await seq([['pip', 'pl', O.go[0]], ...(S.plOnly ? [] : [['fifi', 'en', O.go[1]]])], t)) return;
       $('#room').classList.add('out'); $('.toybox').classList.add('out');
-      M.play('snow', .6); const t0 = performance.now();           // Jingle Bells while they play in the snow
-      kid.classList.add('hop'); snow(14); confettiSmall();
+      if (O.cls) document.body.classList.add(O.cls);
+      M.play(O.song, .6); const t0 = performance.now();            // Jingle Bells in the snow, a march in the rain, a sunny tune in summer
+      kid.classList.add('hop'); O.fx(14); confettiSmall();
+      if (season === 'autumn') kid.insertAdjacentHTML('beforeend', '<div class="puddle"></div>');
       const dance = setInterval(() => { if (t !== tk) return clearInterval(dance); cheer(); }, 1800);
-      if (!await seq([['pip', 'pl', 'Śnieg! Hura!'], ['fifi', 'en', 'Wheee! Snow!']], t)) { clearInterval(dance); return; }
-      const left = (M.on && M.length('snow') ? M.length('snow') * 1000 : 3000) - (performance.now() - t0);
+      if (!await seq([['pip', 'pl', O.fun[0]], ...(S.plOnly ? [] : [['fifi', 'en', O.fun[1]]])], t)) { clearInterval(dance); return; }
+      const left = (M.on && M.length(O.song) ? M.length(O.song) * 1000 : 3000) - (performance.now() - t0);
       await wait(Math.max(1500, left)); clearInterval(dance); if (t !== tk) return;
-      M.stop(1);
-      sayClothes(order, true);
+      M.stop(1); document.body.classList.remove('rainy', 'sunny');
+      sayClothes(season, order);
     } else {
       if (!await seq([['pip', 'pl', `Brawo, ${KID.plCall}! Gotowe!`], ['fifi', 'en', 'All done! Well done!']], t)) return;
-      sayClothes(order, false);
+      sayClothes(season, order);
     }
   };
   const success = async () => {
@@ -740,7 +788,7 @@ function dressGame(mode) {
     const c = target(); hush(); const t = tk;
     const lines = [['pip', 'pl', `To ${jest(o)} ${o.pl}.`]];
     if (!S.plOnly) lines.push(['fifi', 'en', `That's the ${o.en}!`]);
-    lines.push(['pip', 'pl', dressing ? where(c) : `Zdejmij ${c.acc}!`]);
+    lines.push(['pip', 'pl', dressing ? where(c) : offPL(c)]);
     await seq(lines, t);
   };
 
@@ -795,23 +843,26 @@ function dressGame(mode) {
   (async () => {
     await wait(200); if (!alive()) return;
     const intro = dressing
-      ? [['pip', 'pl', `Ubieramy się na dwór, ${KID.plCall}!`], ['fifi', 'en', `Ooh! Let's get dressed to play outside!`]]
-      : [['pip', 'pl', `Brrr! Wracamy! Rozbieramy się, ${KID.plCall}!`], ['fifi', 'en', "We're back inside! Let's take our clothes off!"]];
+      ? ({ winter: [['pip', 'pl', `Zima! Ubieramy się na dwór, ${KID.plCall}!`], ['fifi', 'en', "Ooh! It's winter! Let's get dressed to play outside!"]],
+           autumn: [['pip', 'pl', `Jesień! Pada deszcz! Ubieramy się, ${KID.plCall}!`], ['fifi', 'en', "It's autumn and it's raining! Let's get dressed!"]],
+           summer: [['pip', 'pl', `Lato! Jest ciepło! Ubieramy się, ${KID.plCall}!`], ['fifi', 'en', "It's summer and it's warm! Let's get dressed!"]] })[season]
+      : (season === 'winter' ? [['pip', 'pl', `Brrr! Wracamy! Rozbieramy się, ${KID.plCall}!`], ['fifi', 'en', "We're back inside! Let's take our clothes off!"]]
+                             : [['pip', 'pl', `Wracamy! Rozbieramy się, ${KID.plCall}!`], ['fifi', 'en', "We're back inside! Let's take our things off!"]]);
     if (!await seq(intro.filter(l => !S.plOnly || l[0] === 'pip'), my)) return;
     prompt();
   })();
 }
 
 /* after dressing / undressing: practise saying the clothes words */
-function sayClothes(order, dressed) {
+function sayClothes(season, order) {
   const list = order.map(id => {
-    const c = window.CLOTHES.find(x => x.id === id);
+    const c = window.SEASONS[season].clothes.find(x => x.id === id);
     return { pl: cap(c.pl) + '!', en: cap(c.en), art: window.DRESS_ART.item(id),
       whyEn: c.plural ? `These are the ${c.en}!` : `This is the ${c.en}!` };
   });
   phraseGame(list, {
     intro: [['pip', 'pl', `Teraz mówimy, ${KID.plCall}!`], ['fifi', 'en', "Now let's say the words!"]],
-    done: () => reward(() => dressGame())
+    done: () => reward(() => dressGame(season))
   });
 }
 

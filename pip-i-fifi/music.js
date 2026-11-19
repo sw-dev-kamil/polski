@@ -114,6 +114,39 @@ const SNOW = {
   }
 };
 
+/* Summer sunshine: an original sunny calypso tune (steel drum feel), 120 bpm */
+function pan(c, out, t, f, v) {                   // steel-drum-ish
+  osc(c, 'sine', f, t, .7, env(c, out, t, v, .7, .003));
+  osc(c, 'sine', f * 2, t, .35, env(c, out, t, v * .45, .35, .003));
+  osc(c, 'sine', f * 3.01, t, .18, env(c, out, t, v * .2, .18, .002));
+}
+const SUN = {
+  bpm: 120, bars: 9, loop: false,
+  chords: ['C', 'G', 'C', 'G', 'F', 'C', 'G', 'C', 'C'],
+  melody: mel([
+    [['G5', .5], ['E5', .5], ['G5', 1], ['A5', .5], ['G5', .5], ['E5', 1]],
+    [['F5', .5], ['D5', .5], ['F5', 1], ['G5', 2]],
+    [['E5', .5], ['C5', .5], ['E5', 1], ['F5', .5], ['E5', .5], ['C5', 1]],
+    [['D5', 1], ['B4', 1], ['G4', 2]],
+    [['A5', .5], ['A5', .5], ['C6', 1], ['A5', .5], ['G5', .5], ['F5', 1]],
+    [['G5', .5], ['G5', .5], ['E5', 1], ['C5', 2]],
+    [['D5', .5], ['E5', .5], ['F5', .5], ['G5', .5], ['A5', 1], ['B5', 1]],
+    [['C6', 2], ['G5', 1], ['E5', 1]],
+    [['C6', 3]]
+  ]),
+  play(c, out, b) {
+    this.melody.forEach(([bar, beat, n]) => pan(c, out, (bar * 4 + beat) * b, hz(n), .45));
+    this.chords.forEach((ch, bar) => {
+      const [r, third, fifth] = CH[ch], t0 = bar * 4 * b;
+      if (bar === 8) { bass(c, out, t0, hz(r + '3'), .4, 1.5); [r + '4', third + '4', fifth + '4'].forEach(n => pan(c, out, t0, hz(n), .15)); return; }
+      [0, 1.5, 2, 3.5].forEach((k, i) => bass(c, out, t0 + k * b, hz((i % 2 ? fifth : r) + '3'), .34, b * .7));   // calypso bass
+      [.5, 1.5, 2.5, 3.5].forEach(k => [third + '4', fifth + '4'].forEach(n => marimba(c, out, t0 + k * b, hz(n), .09)));
+      for (let k = 0; k < 8; k++) shaker(c, out, t0 + k * b / 2, k % 2 ? .05 : .08);
+      boop(c, out, t0, .3); boop(c, out, t0 + 2 * b, .25);
+    });
+  }
+};
+
 /* Menu: gentle music-box loop, 96 bpm, 16 bars */
 const MENU = {
   bpm: 96, bars: 16, loop: true,
@@ -172,7 +205,7 @@ function render(song) {
 }
 
 /* ---------- player ---------- */
-const SONGS = { walk: WALK, menu: MENU, snow: SNOW };
+const SONGS = { walk: WALK, menu: MENU, snow: SNOW, sun: SUN };
 window.Music = {
   on: true, getCtx: () => null, songs: {}, ready: null,
   src: null, g: null, cur: null, base: 0, ducked: false, undo: 0,
