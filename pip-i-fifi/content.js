@@ -178,3 +178,25 @@ window.BAKE = [
   { id: "mleko",  pl: "mleko",  acc: "mleko",  en: "milk",   verbPL: "Wlej",  verbEN: "Pour in the", fx: "splash", col: "#FFF1C9" },
   { id: "maslo",  pl: "masło",  acc: "masło",  en: "butter", verbPL: "Dodaj", verbEN: "Add the", fx: "plop",  col: "#FFE08A" }
 ];
+
+/* 🛒 At the shop: fruit and vegetables (plural → "Gdzie są …?") */
+window.FRUIT = [
+  { pl: "jabłko",     en: "apple",      emoji: "🍎" },
+  { pl: "banan",      en: "banana",     emoji: "🍌" },
+  { pl: "gruszka",    en: "pear",       emoji: "🍐" },
+  { pl: "truskawka",  en: "strawberry", emoji: "🍓" },
+  { pl: "winogrona",  en: "grapes",     emoji: "🍇", plural: true },
+  { pl: "pomarańcza", en: "orange",     emoji: "🍊" },
+  { pl: "cytryna",    en: "lemon",      emoji: "🍋" },
+  { pl: "arbuz",      en: "watermelon", emoji: "🍉" }
+];
+window.VEG = [
+  { pl: "marchewka",  en: "carrot",     emoji: "🥕" },
+  { pl: "pomidor",    en: "tomato",     emoji: "🍅" },
+  { pl: "ogórek",     en: "cucumber",   emoji: "🥒" },
+  { pl: "ziemniak",   en: "potato",     emoji: "🥔" },
+  { pl: "brokuł",     en: "broccoli",   emoji: "🥦" },
+  { pl: "papryka",    en: "pepper",     emoji: "🫑" },
+  { pl: "kukurydza",  en: "corn",       emoji: "🌽" },
+  { pl: "cebula",     en: "onion",      emoji: "🧅" }
+];

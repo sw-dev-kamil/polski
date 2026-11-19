@@ -524,6 +524,9 @@ const TILES = [
   { id: 'dress',   e: '🧥', en: 'Getting dressed', pl: 'Ubieramy się', s: '#E4D4F4' },
   { id: 'songs',   e: '🎵', en: 'Songs', pl: 'Piosenki', s: '#FFD3E4' },
   { id: 'stickers',e: '⭐', en: 'Stickers', pl: 'Naklejki', s: '#F7E6A6' },
+  { id: 'fruit',     e: '🍎', en: 'Fruit',         pl: 'Owoce',        s: '#FAD4CF' },
+  { id: 'veg',       e: '🥕', en: 'Vegetables',    pl: 'Warzywa',      s: '#D7EFC4' },
+  { id: 'shopping',  e: '🛒', en: 'Shopping',      pl: 'Zakupy',       s: '#FFE7A8' },
   { id: 'bake',      e: '🧁', en: 'Baking',        pl: 'Pieczemy',     s: '#FBD9C4' },
   { id: 'food',      e: '🍽️', en: 'Mealtime',      pl: 'Jedzenie',     s: '#F8D7B8' },
   { id: 'bath',      e: '🛁', en: 'Bath time',     pl: 'Kąpiel',       s: '#C9E8F5' },
@@ -539,6 +542,7 @@ const WORLDS = [
   { id: 'home',     e: '🏠', pl: 'W domu',         en: 'At home',          tiles: ['bake', 'food', 'bath', 'bed', 'stickers'] },
   { id: 'nursery',  e: '🏫', pl: 'W przedszkolu',  en: 'At nursery',       tiles: ['teacher', 'friends', 'needs', 'arts', 'dress', 'songs', 'stickers'] },
   { id: 'outside',  e: '🌳', pl: 'Na dworze',      en: 'Playing outside',  tiles: ['playground', 'colours', 'animals', 'count', 'stickers'] },
+  { id: 'shop',     e: '🛒', pl: 'W sklepie',      en: 'At the shop',      tiles: ['shopping', 'fruit', 'veg', 'stickers'] },
   { id: 'holidays', e: '🏖️', pl: 'Wakacje',        en: 'Holidays',         tiles: ['beach', 'icecream', 'stickers'] }
 ];
 const SCENES = {
@@ -582,6 +586,15 @@ const SCENES = {
     <circle cx="420" cy="700" r="16" fill="#FF9AA8"/><path d="M700 690 q20 -30 40 0 Z" fill="#FFC93C"/>
   </svg>`
 };
+SCENES.shop = `<svg class="scene" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMax slice">
+    <rect width="1200" height="800" fill="#FFF6E6"/><rect y="580" width="1200" height="220" fill="#CFE3D3"/><rect y="574" width="1200" height="10" fill="#A9C9B0"/>
+    ${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(i => `<path d="M${i * 100} 0 h100 v70 q-25 26 -50 0 q-25 26 -50 0 Z" fill="${i % 2 ? '#fff' : '#E8505B'}"/>`).join('')}
+    <rect x="60" y="250" width="380" height="16" rx="6" fill="#C99A6A"/><rect x="60" y="400" width="380" height="16" rx="6" fill="#C99A6A"/>
+    <text x="100" y="245" font-size="58">🍎🍌🍐🍊</text><text x="100" y="395" font-size="58">🥕🥦🍅🌽</text>
+    <rect x="800" y="420" width="320" height="170" rx="16" fill="#8E99A6"/><rect x="820" y="380" width="120" height="70" rx="10" fill="#2B2B3A"/>
+    <text x="880" y="428" text-anchor="middle" font-size="30" font-family="sans-serif" font-weight="800" fill="#7CFF8A">0,00</text>
+    <rect x="960" y="430" width="140" height="22" rx="8" fill="#5A4632"/>
+  </svg>`;
 const curWorld = () => WORLDS.find(w => w.id === S.world) || WORLDS[1];
 function home(greet, switched) {
   const W = curWorld();
@@ -612,7 +625,7 @@ async function openTile(id, el) {
   hush(); const my = tk; M.stop(1.2);
   el.style.transform = 'scale(1.12)';
   const go = { colours: () => pickGame('colours'), animals: () => pickGame('animals'), count: countGame,
-    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), dress: () => seasonMenu(), bake: bakeGame, songs: songsMenu, stickers: stickerBook }[id]
+    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), dress: () => seasonMenu(), bake: bakeGame, fruit: () => pickGame('fruit'), veg: () => pickGame('veg'), shopping: shopGame, songs: songsMenu, stickers: stickerBook }[id]
     || (window.TOPICS[id] && (() => phraseGame(window.TOPICS[id])));
   await Promise.race([seq([['fifi', 'en', 'Yay! ' + t.en + '!'], ['pip', 'pl', 'Hura! ' + t.pl + '!']], my), wait(3200)]);
   opening = false;
@@ -627,7 +640,8 @@ function balloonHTML(c) {
 }
 function pickGame(kind) {
   const isCol = kind === 'colours';
-  const pool = isCol ? window.COLOURS : window.ANIMALS;
+  const pool = { colours: window.COLOURS, animals: window.ANIMALS, fruit: window.FRUIT, veg: window.VEG }[kind];
+  const jest = o => o.plural ? 'są' : 'jest';
   const total = 6; let round = 0; let last = null;
   const next = () => {
     if (round >= total) return reward(() => pickGame(kind));
@@ -642,7 +656,7 @@ function pickGame(kind) {
     const bilingual = !S.plOnly;                 // Polish-only = test mode (grown-up panel)
     const prompt = isCol
       ? [['pip', 'pl', `Gdzie jest ${target.pl} balonik?`], ...(bilingual ? [['fifi', 'en', pick([`Find the ${target.en} balloon!`, `Where's the ${target.en} balloon?`])]] : [])]
-      : [['pip', 'pl', `Gdzie jest ${target.pl}?`], ...(bilingual ? [['fifi', 'en', pick([`Where is the ${target.en}?`, `Can you find the ${target.en}?`])]] : [])];
+      : [['pip', 'pl', `Gdzie ${jest(target)} ${target.pl}?`], ...(bilingual ? [['fifi', 'en', pick(target.plural ? [`Where are the ${target.en}?`, `Can you find the ${target.en}?`] : [`Where is the ${target.en}?`, `Can you find the ${target.en}?`])]] : [])];
     seq(prompt, my);
     $('#again').onclick = () => { hush(); seq(prompt); };
     let solved = false;
@@ -658,12 +672,12 @@ function pickGame(kind) {
         const dots = $$('.dots i'); if (dots[round - 1]) dots[round - 1].classList.add('on');
         await seq(isCol
           ? [['pip', 'pl', `${cap(target.pl)}! ${praisePL()}`], ['fifi', 'en', praiseEN()]]
-          : [['pip', 'pl', `${cap(target.pl)}! ${target.sound}`], ['fifi', 'en', praiseEN()]], t);
+          : [['pip', 'pl', `${cap(target.pl)}! ${target.sound || praisePL()}`], ['fifi', 'en', praiseEN()]], t);
         if (t === tk) { await wait(300); if (t === tk) next(); }
       } else {
         b.classList.remove('no'); void b.offsetWidth; b.classList.add('no');
-        await seq([['pip', 'pl', `To jest ${o.pl}.`], ['fifi', 'en', isCol ? `Oops, that's ${o.en}!` : `That's the ${o.en}!`],
-          ['pip', 'pl', isCol ? `Gdzie jest ${target.pl} balonik?` : `Gdzie jest ${target.pl}?`]].filter(l => !S.plOnly || l[0] === 'pip'), t);
+        await seq([['pip', 'pl', `To ${jest(o)} ${o.pl}.`], ['fifi', 'en', isCol ? `Oops, that's ${o.en}!` : o.plural ? `Those are the ${o.en}!` : `That's the ${o.en}!`],
+          ['pip', 'pl', isCol ? `Gdzie jest ${target.pl} balonik?` : `Gdzie ${jest(target)} ${target.pl}?`]].filter(l => !S.plOnly || l[0] === 'pip'), t);
       }
     });
   };
@@ -1081,6 +1095,7 @@ function sfx(kind) {
   if (kind === 'plop') { const o = c.createOscillator(), g = c.createGain(); o.frequency.setValueAtTime(420, t); o.frequency.exponentialRampToValueAtTime(140, t + .15);
     g.gain.setValueAtTime(.3, t); g.gain.exponentialRampToValueAtTime(.0001, t + .2); o.connect(g).connect(c.destination); o.start(t); o.stop(t + .25); }
   if (kind === 'tick') tone(1200, 0, .05, .08, 'square');
+  if (kind === 'beep') tone(1760, 0, .14, .1, 'square');
   if (kind === 'pop') tone(880, 0, .12, .12);
 }
 
@@ -1245,6 +1260,92 @@ function bakeGame() {
   (async () => {
     await wait(250); if (!alive()) return;
     if (!await seq([['pip', 'pl', `Pieczemy ciasto, ${KID.plCall}!`], ...(bi() ? [['fifi', 'en', "Ooh! Let's bake a cake!"]] : [])], my)) return;
+    prompt();
+  })();
+}
+
+
+/* ---------- 🛒 shopping: list → basket → till ---------- */
+function shopGame() {
+  const all = [...window.FRUIT, ...window.VEG];
+  const shelf = shuffle(all).slice(0, 8);
+  const list = shuffle(shelf).slice(0, 3);
+  const bi = () => !S.plOnly, jest = o => o.plural ? 'są' : 'jest';
+  let step = 0, busy = true, hintT = 0;
+  const bg = `<svg class="scene" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMax slice"><rect width="1200" height="800" fill="#FFF6E6"/>
+    <rect y="580" width="1200" height="220" fill="#CFE3D3"/><rect y="574" width="1200" height="10" fill="#A9C9B0"/>
+    ${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(i => `<path d="M${i * 100} 0 h100 v70 q-25 26 -50 0 q-25 26 -50 0 Z" fill="${i % 2 ? '#fff' : '#E8505B'}"/>`).join('')}</svg>`;
+  const my = show(`<div class="world-bg">${bg}</div>${topbar(list.length + 1, 0)}
+    <div class="shoplist" id="slist"><b>🛒</b>${list.map(o => `<span data-e="${o.emoji}">${o.emoji}</span>`).join('')}</div>
+    <div class="shelf" id="shelf">${shelf.map((o, i) => `<button class="sitem" data-i="${i}">${o.emoji}</button>`).join('')}</div>
+    <div class="basket" id="basket"><div class="b-in" id="bin"></div><div class="b-front">🧺</div></div>
+    <div class="till" id="till"><div class="t-screen" id="tscreen">0,00 zł</div><div class="t-belt" id="tbelt"></div><button class="coin" id="coin">🪙</button></div>
+    ${chars()}`);
+  bindHome();
+  const alive = () => $('#shelf') && my <= tk && document.body.contains($('#basket'));
+  const target = () => list[step];
+  const ask = o => [['pip', 'pl', `Gdzie ${jest(o)} ${o.pl}? Do koszyka!`], ...(bi() ? [['fifi', 'en', `Put the ${o.en} in the basket!`]] : [])];
+  const hint = () => { clearTimeout(hintT); hintT = setTimeout(() => { if (!busy) { const i = shelf.indexOf(target()); const e = $(`.sitem[data-i="${i}"]`); e && e.classList.add('hint'); } }, 9000); };
+  const prompt = async () => { busy = false; $$('#slist span').forEach((x, i) => x.classList.toggle('now', i === step)); hint(); await seq(ask(target())); };
+  $('#again').onclick = () => { hush(); if (step < list.length) seq(ask(target())); };
+  const toBasket = el => {
+    busy = true; clearTimeout(hintT); $$('.hint').forEach(x => x.classList.remove('hint'));
+    const B = $('#basket').getBoundingClientRect(), E = el.getBoundingClientRect();
+    el.style.transition = 'transform .55s cubic-bezier(.4,.1,.3,1)';
+    el.style.transform = `translate(${B.left + B.width / 2 - (E.left + E.width / 2)}px, ${B.top + B.height * .25 - (E.top + E.height / 2)}px) scale(.8)`;
+    setTimeout(async () => {
+      el.classList.add('taken'); sfx('plop');
+      $('#bin').insertAdjacentHTML('beforeend', `<span>${el.textContent}</span>`);
+      const sp = $$('#slist span')[step]; sp.classList.add('got'); sp.classList.remove('now');
+      const o = target(); step++; const d = $$('.dots i')[step - 1]; if (d) d.classList.add('on');
+      hush(); const t = tk; cheer('pip');
+      if (!await seq([['pip', 'pl', `${cap(o.pl)}! ${praisePL()}`], ...(bi() ? [['fifi', 'en', praiseEN()]] : [])], t)) return;
+      if (step >= list.length) return tillPhase();
+      prompt();
+    }, 560);
+  };
+  $$('.sitem').forEach(el => el.addEventListener('pointerdown', e => {
+    if (busy || el.classList.contains('taken')) return;
+    e.preventDefault(); unlockAudio(); try { el.setPointerCapture(e.pointerId); } catch (x) {}
+    const sx = e.clientX, sy = e.clientY; let moved = false; el.style.transition = 'none'; el.classList.add('drag');
+    const mv = ev => { const dx = ev.clientX - sx, dy = ev.clientY - sy; if (Math.hypot(dx, dy) > 12) moved = true; el.style.transform = `translate(${dx}px, ${dy}px) scale(1.15)`; };
+    const up = async ev => {
+      el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); el.classList.remove('drag');
+      const B = $('#basket').getBoundingClientRect(), pad = 50;
+      const over = ev.clientX > B.left - pad && ev.clientX < B.right + pad && ev.clientY > B.top - pad && ev.clientY < B.bottom + pad;
+      const o = shelf[+el.dataset.i];
+      if (busy || (moved && !over)) { el.style.transition = ''; el.style.transform = ''; return; }
+      if (o === target()) return toBasket(el);
+      el.style.transition = ''; el.style.transform = ''; el.classList.remove('no'); void el.offsetWidth; el.classList.add('no');
+      hush(); const t = tk; const c = target();
+      await seq([['pip', 'pl', `To ${jest(o)} ${o.pl}.`], ...(bi() ? [['fifi', 'en', o.plural ? `Those are the ${o.en}!` : `That's the ${o.en}!`]] : []), ['pip', 'pl', `Gdzie ${jest(c)} ${c.pl}?`]], t);
+    };
+    el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+  }));
+  async function tillPhase() {
+    const t = tk; $('#shelf').classList.add('gone'); $('#till').classList.add('in');
+    if (!await seq([['pip', 'pl', 'Do kasy!'], ...(bi() ? [['fifi', 'en', "Let's go to the till!"]] : [])], t)) return;
+    const items = [...$$('#bin span')]; let sum = 0;
+    for (const it of items) {                    // beep, beep, beep
+      await wait(550); if (t !== tk) return;
+      $('#tbelt').insertAdjacentHTML('beforeend', `<span>${it.textContent}</span>`); it.remove();
+      sum += 2 + Math.floor(Math.random() * 6); $('#tscreen').textContent = sum + ',00 zł'; sfx('beep');
+    }
+    if (!await seq([['pip', 'pl', `${KID.plCall}, płacimy!`], ...(bi() ? [['fifi', 'en', 'Tap the coin to pay!']] : [])], t)) return;
+    const coin = $('#coin'); coin.classList.add('show');
+    coin.onclick = async () => {
+      if (coin.classList.contains('paid')) return; unlockAudio(); coin.classList.add('paid'); sfx('ding');
+      const d = $$('.dots i')[list.length]; if (d) d.classList.add('on');
+      hush(); const tt = tk; cheer(); confettiSmall();
+      if (!await seq([['pip', 'pl', 'Proszę!'], ['pip', 'pl', 'Dziękuję! Do widzenia!'], ...(bi() ? [['fifi', 'en', 'Thank you! Goodbye!']] : [])], tt)) return;
+      await wait(600); if (tt !== tk) return;
+      const words = list.map(o => ({ pl: cap(o.pl) + '!', en: cap(o.en), emoji: o.emoji, whyEn: o.plural ? `These are the ${o.en}!` : `This is the ${o.en}!` }));
+      phraseGame(words, { intro: [['pip', 'pl', `Teraz mówimy, ${KID.plCall}!`], ['fifi', 'en', "Now let's say the words!"]], done: () => reward(shopGame) });
+    };
+  }
+  (async () => {
+    await wait(250);
+    if (!await seq([['pip', 'pl', `Idziemy na zakupy, ${KID.plCall}!`], ...(bi() ? [['fifi', 'en', "Let's go shopping! Here is our list!"]] : [])], my)) return;
     prompt();
   })();
 }

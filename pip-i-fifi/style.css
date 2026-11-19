@@ -387,3 +387,40 @@ body.sunny #screen::before { content: ''; position: fixed; inset: 0; background:
   .oven { right: 3vw; bottom: 30vh; }
   .cake { bottom: 30vh; }
 }
+
+/* ============ 🛒 shop ============ */
+.shoplist { position: absolute; left: 14vmin; top: calc(env(safe-area-inset-top) + 11vmin); z-index: 4; display: flex; gap: 1.5vmin; align-items: center;
+  background: #fff; padding: 1.5vmin 2.5vmin; border-radius: 2vmin; box-shadow: 0 1vmin 2vmin rgba(0,0,0,.12); transform: rotate(-2deg); }
+.shoplist b { font-size: 5vmin; }
+.shoplist span { font-size: 7vmin; position: relative; opacity: .9; transition: transform .3s; }
+.shoplist span.now { transform: scale(1.25); animation: wiggleWait 1s ease-in-out infinite; }
+.shoplist span.got { opacity: .45; }
+.shoplist span.got::after { content: '✓'; position: absolute; right: -1vmin; bottom: -1vmin; font-size: 4.5vmin; font-weight: 900; color: #2F9E58; }
+.shelf { position: absolute; right: 18vw; top: 24vh; width: 56vmin; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2.5vmin; z-index: 4; transition: opacity .6s, transform .6s; }
+.shelf.gone { opacity: 0; transform: translateY(8vh); pointer-events: none; }
+.sitem { font-size: 9.5vmin; height: 14vmin; border-radius: 2.5vmin; background: #F4E1C3; box-shadow: inset 0 -1.6vmin 0 #D9B48A, 0 .8vmin 0 rgba(0,0,0,.08);
+  display: flex; align-items: center; justify-content: center; touch-action: none; position: relative; transition: transform .35s cubic-bezier(.3,1.4,.5,1); }
+.sitem.drag { z-index: 6; transition: none; }
+.sitem.taken { visibility: hidden; }
+.sitem.no { animation: no .5s ease; }
+.sitem.hint { animation: itemHint2 1s ease-in-out infinite; }
+.basket { position: absolute; left: 18vw; bottom: 8vh; width: 30vmin; height: 24vmin; z-index: 5; }
+.b-front { position: absolute; inset: 0; font-size: 26vmin; line-height: 1; display: flex; align-items: flex-end; justify-content: center; pointer-events: none; }
+.b-in { position: absolute; left: 12%; right: 12%; top: -2vmin; display: flex; flex-wrap: wrap; justify-content: center; font-size: 8vmin; z-index: -1; }
+.b-in span { animation: pop .4s cubic-bezier(.3,1.6,.5,1); margin: -1vmin; }
+.till { position: absolute; right: 16vw; bottom: 12vh; width: 50vmin; height: 30vmin; border-radius: 3vmin; background: #8E99A6; box-shadow: 0 1.2vmin 0 #6E7884; z-index: 3;
+  transform: translateX(70vw); transition: transform .8s cubic-bezier(.3,1.2,.5,1); }
+.till.in { transform: none; }
+.t-screen { position: absolute; left: 3vmin; top: -11vmin; padding: 1.5vmin 3vmin; border-radius: 1.5vmin; background: #2B2B3A; color: #7CFF8A; font: 900 4.4vmin/1 ui-monospace, monospace; }
+.t-belt { position: absolute; left: 3vmin; right: 3vmin; top: 4vmin; height: 12vmin; border-radius: 1.5vmin; background: repeating-linear-gradient(90deg, #3E3E4A 0 2vmin, #4A4A58 2vmin 4vmin);
+  display: flex; align-items: center; gap: 1vmin; padding: 0 1.5vmin; font-size: 8vmin; overflow: hidden; }
+.t-belt span { animation: slideIn .4s ease; }
+@keyframes slideIn { from { transform: translateX(30vmin); } to { transform: none; } }
+.coin { position: absolute; right: -4vmin; bottom: -4vmin; font-size: 13vmin; opacity: 0; pointer-events: none; transition: transform .5s, opacity .3s; }
+.coin.show { opacity: 1; pointer-events: auto; animation: tapMe 1.1s ease-in-out infinite; }
+.coin.paid { animation: none; transform: translate(-20vmin, -14vmin) scale(.5); opacity: 0; }
+@media (orientation: portrait) {
+  .shelf { right: 4vw; top: 30vh; width: 80vmin; }
+  .basket { left: 8vw; bottom: 26vh; }
+  .till { right: 4vw; bottom: 26vh; }
+}
