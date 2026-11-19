@@ -530,7 +530,7 @@ function dressGame(mode) {
   const jest = c => c.plural ? 'są' : 'jest';
   const where = c => `Gdzie ${jest(c)} ${c.pl}?`;
   const ask = c => {
-    const bi = step < 3;
+    const bi = true;                              // Fifi (English) + Pip (Polish) every time — Polish only would confuse her
     if (dressing) return bi ? [['fifi', 'en', `${c.plural ? 'Where are' : "Where's"} the ${c.en}? Put on the ${c.en}!`], ['pip', 'pl', `${cap(c.pl)}! Załóż ${c.acc}!`]]
       : [['pip', 'pl', `${where(c)} Załóż ${c.acc}!`]];
     return bi ? [['fifi', 'en', `Take off the ${c.en}!`], ['pip', 'pl', `Zdejmij ${c.acc}!`]] : [['pip', 'pl', `Zdejmij ${c.acc}!`]];
@@ -576,7 +576,7 @@ function dressGame(mode) {
     const dots = $$('.dots i'); if (dots[step - 1]) dots[step - 1].classList.add('on');
     cheer('pip');
     const lines = [['pip', 'pl', `${cap(c.pl)}! ${praisePL()}`]];
-    if (step <= 3) lines.push(['fifi', 'en', praiseEN()]);
+    lines.push(['fifi', 'en', praiseEN()]);
     if (!await seq(lines, t)) return;
     if (step >= order.length) return done();
     prompt();
@@ -584,7 +584,7 @@ function dressGame(mode) {
   const wrong = async o => {
     const c = target(); hush(); const t = tk;
     const lines = dressing ? [['pip', 'pl', `To ${jest(o)} ${o.pl}. ${where(c)}`]] : [['pip', 'pl', `To ${jest(o)} ${o.pl}. Zdejmij ${c.acc}!`]];
-    if (step < 3) lines.unshift(['fifi', 'en', `That's the ${o.en}!`]);
+    lines.unshift(['fifi', 'en', `That's the ${o.en}!`]);
     await seq(lines, t);
   };
 
