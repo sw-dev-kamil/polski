@@ -330,3 +330,60 @@ body.sunny #screen::before { content: ''; position: fixed; inset: 0; background:
 .menu.world-menu { top: 22vh; z-index: 3; }
 .world-menu .tile .l { text-align: center; padding: 0 1vmin; }
 @media (orientation: portrait) { .wbtn { width: 17vmin; } .menu.world-menu { top: 18vh; } }
+
+/* ============ 🧁 baking ============ */
+.kitchen { position: absolute; inset: 0; z-index: 0; }
+.tiles-wall { position: absolute; inset: 0; background-color: #FFF8EC;
+  background-image: linear-gradient(#F1E4CF 2px, transparent 2px), linear-gradient(90deg, #F1E4CF 2px, transparent 2px); background-size: 9vmin 9vmin; }
+.counter { position: absolute; left: 0; right: 0; bottom: 0; height: 22vh; background: #D9B48A; border-top: 2.2vmin solid #E8C9A0; box-shadow: 0 -.6vmin 0 #C99A6A inset; }
+.bowl { position: absolute; left: 17vw; bottom: 15vh; width: 44vmin; z-index: 3; touch-action: none; transition: transform .9s ease, opacity .9s; }
+.bowl svg { width: 100%; height: auto; display: block; }
+.bowl.bump { animation: bowlBump .4s ease; }
+@keyframes bowlBump { 30% { transform: scale(1.05, .95); } 60% { transform: scale(.97, 1.03); } }
+.bowl.to-oven { transform: translate(40vw, -6vh) scale(.35); opacity: 0; }
+.bowl.tap-me { animation: tapMe 1.2s ease-in-out infinite; cursor: pointer; }
+@keyframes tapMe { 50% { transform: scale(1.05); filter: drop-shadow(0 0 2vmin #FFE066); } }
+.bowl.hint { animation: tapMe .9s ease-in-out infinite; }
+.spoon { position: absolute; left: 60%; top: 10%; width: 7vmin; transform: translate(-50%, -85%) rotate(18deg); pointer-events: none; display: none; }
+.bowl.mixing .spoon { display: block; }
+.mixring { position: absolute; left: 50%; top: -9vmin; transform: translateX(-50%); width: 9vmin; height: 9vmin; border-radius: 50%; display: none;
+  background: conic-gradient(#4CC373 calc(var(--p, 0) * 360deg), rgba(255,255,255,.7) 0); box-shadow: 0 0 0 .6vmin #fff; }
+.mixring::after { content: '🥄'; position: absolute; inset: 1.2vmin; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 3.6vmin; }
+.bowl.mixing .mixring { display: block; }
+.pantry { position: absolute; right: 20vw; bottom: 17vh; width: 54vmin; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2vmin 1vmin; justify-items: center; align-items: end; z-index: 4; transition: opacity .6s, transform .6s; }
+.pantry.gone { opacity: 0; transform: translateY(8vh); pointer-events: none; }
+.ing { width: 15.5vmin; touch-action: none; cursor: grab; position: relative; filter: drop-shadow(0 .6vmin .4vmin rgba(0,0,0,.18)); transition: transform .35s cubic-bezier(.3,1.4,.5,1), opacity .4s; }
+.ing svg { width: 100%; height: auto; display: block; }
+.ing.drag { z-index: 6; }
+.ing.used { opacity: 0; pointer-events: none; }
+.ing.no { animation: no .5s ease; }
+.ing.hint { animation: itemHint2 1s ease-in-out infinite; }
+@keyframes itemHint2 { 50% { transform: scale(1.18); filter: drop-shadow(0 0 2vmin #FFE066); } }
+.bit { position: fixed; width: 1.6vmin; height: 1.6vmin; border-radius: 50%; z-index: 7; pointer-events: none; animation: bitFall 1.1s ease-in forwards; }
+.bit-puff { width: 4vmin; height: 4vmin; background: rgba(255,255,255,.95); animation-name: bitPuff; }
+.bit-spark { background: #fff; box-shadow: 0 0 .8vmin #FFE066; }
+.bit-crack { background: #FFD23F; width: 2.2vmin; height: 2.2vmin; }
+.bit-splash { background: #F4F8FF; }
+.bit-plop { background: #FFE08A; border-radius: .4vmin; }
+@keyframes bitFall { from { transform: translate(0, -6vmin); opacity: 1; } to { transform: translate(var(--dx), 10vmin); opacity: 0; } }
+@keyframes bitPuff { from { transform: scale(.4); opacity: .95; } to { transform: translate(var(--dx), -12vmin) scale(2.4); opacity: 0; } }
+.oven { position: absolute; right: 20vw; bottom: 15vh; width: 40vmin; z-index: 2; transform: translateX(70vw); transition: transform .8s cubic-bezier(.3,1.2,.5,1), opacity .6s; }
+.oven svg { width: 100%; height: auto; display: block; }
+.oven.in { transform: none; }
+.oven.out { opacity: 0; transform: translateX(10vw); }
+.cake { position: absolute; left: 34%; bottom: 15vh; width: 46vmin; z-index: 3; transform: translateX(-50%) scale(0); transition: transform .7s cubic-bezier(.3,1.5,.5,1); }
+.cake svg { width: 100%; height: auto; display: block; overflow: visible; }
+.cake.in { transform: translateX(-50%) scale(1); }
+.cake.done { animation: cakeYay 1s ease-in-out 2; }
+@keyframes cakeYay { 50% { transform: translateX(-50%) scale(1.08) rotate(-3deg); } }
+.cake .popin { animation: pop .4s cubic-bezier(.3,1.6,.5,1); transform-box: fill-box; transform-origin: center; }
+.pantry.deco { opacity: 0; pointer-events: none; transform: translateY(8vh); right: 20vw; width: 50vmin; }
+.pantry.deco.in { opacity: 1; pointer-events: auto; transform: none; }
+.pantry.deco .ing { cursor: pointer; }
+@media (orientation: portrait) {
+  .bowl { left: 6vw; bottom: 30vh; width: 46vmin; }
+  .pantry { right: 3vw; bottom: 30vh; width: 44vmin; }
+  .counter { height: 34vh; }
+  .oven { right: 3vw; bottom: 30vh; }
+  .cake { bottom: 30vh; }
+}

@@ -169,3 +169,12 @@ window.TOPICS = {
     { pl: "Dziękuję!", en: "Thank you!", emoji: "💛", why: "When you get your ice cream, say:" }
   ]
 };
+
+/* Baking (🧁 Pieczemy): verb = what Pip asks ("Wsyp mąkę!"), plural → "Gdzie są …?" */
+window.BAKE = [
+  { id: "maka",   pl: "mąka",   acc: "mąkę",   en: "flour",  verbPL: "Wsyp",  verbEN: "Pour in the" , fx: "puff",  col: "#FFF6E8" },
+  { id: "cukier", pl: "cukier", acc: "cukier", en: "sugar",  verbPL: "Wsyp",  verbEN: "Pour in the" , fx: "spark", col: "#FFF6E8" },
+  { id: "jajka",  pl: "jajka",  acc: "jajka",  en: "eggs",   verbPL: "Dodaj", verbEN: "Add the", fx: "crack", col: "#FFE9A8", plural: true },
+  { id: "mleko",  pl: "mleko",  acc: "mleko",  en: "milk",   verbPL: "Wlej",  verbEN: "Pour in the", fx: "splash", col: "#FFF1C9" },
+  { id: "maslo",  pl: "masło",  acc: "masło",  en: "butter", verbPL: "Dodaj", verbEN: "Add the", fx: "plop",  col: "#FFE08A" }
+];

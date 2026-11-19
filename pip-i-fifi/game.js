@@ -524,6 +524,7 @@ const TILES = [
   { id: 'dress',   e: '🧥', en: 'Getting dressed', pl: 'Ubieramy się', s: '#E4D4F4' },
   { id: 'songs',   e: '🎵', en: 'Songs', pl: 'Piosenki', s: '#FFD3E4' },
   { id: 'stickers',e: '⭐', en: 'Stickers', pl: 'Naklejki', s: '#F7E6A6' },
+  { id: 'bake',      e: '🧁', en: 'Baking',        pl: 'Pieczemy',     s: '#FBD9C4' },
   { id: 'food',      e: '🍽️', en: 'Mealtime',      pl: 'Jedzenie',     s: '#F8D7B8' },
   { id: 'bath',      e: '🛁', en: 'Bath time',     pl: 'Kąpiel',       s: '#C9E8F5' },
   { id: 'bed',       e: '🌙', en: 'Good night',    pl: 'Dobranoc',     s: '#D9D2F2' },
@@ -535,7 +536,7 @@ const TILES = [
 ];
 /* places on the main screen: each has its own scene and its own tiles (⭐ stickers everywhere) */
 const WORLDS = [
-  { id: 'home',     e: '🏠', pl: 'W domu',         en: 'At home',          tiles: ['food', 'bath', 'bed', 'stickers'] },
+  { id: 'home',     e: '🏠', pl: 'W domu',         en: 'At home',          tiles: ['bake', 'food', 'bath', 'bed', 'stickers'] },
   { id: 'nursery',  e: '🏫', pl: 'W przedszkolu',  en: 'At nursery',       tiles: ['teacher', 'friends', 'needs', 'arts', 'dress', 'songs', 'stickers'] },
   { id: 'outside',  e: '🌳', pl: 'Na dworze',      en: 'Playing outside',  tiles: ['playground', 'colours', 'animals', 'count', 'stickers'] },
   { id: 'holidays', e: '🏖️', pl: 'Wakacje',        en: 'Holidays',         tiles: ['beach', 'icecream', 'stickers'] }
@@ -611,7 +612,7 @@ async function openTile(id, el) {
   hush(); const my = tk; M.stop(1.2);
   el.style.transform = 'scale(1.12)';
   const go = { colours: () => pickGame('colours'), animals: () => pickGame('animals'), count: countGame,
-    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), dress: () => seasonMenu(), songs: songsMenu, stickers: stickerBook }[id]
+    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), dress: () => seasonMenu(), bake: bakeGame, songs: songsMenu, stickers: stickerBook }[id]
     || (window.TOPICS[id] && (() => phraseGame(window.TOPICS[id])));
   await Promise.race([seq([['fifi', 'en', 'Yay! ' + t.en + '!'], ['pip', 'pl', 'Hura! ' + t.pl + '!']], my), wait(3200)]);
   opening = false;
@@ -1059,6 +1060,193 @@ function reward(again) {
   $('#rh').onclick = () => home(false);
   $('#ra').onclick = again;
   seq([['fifi', 'en', `Wow! Yay! A sticker for you, ${KID.en}!`], ['pip', 'pl', `Hura! Naklejka dla ciebie! Brawo, ${KID.plCall}!`]], my).then(ok => ok && cheer());
+}
+
+
+/* ---------- little sound effects (made on the fly) ---------- */
+function sfx(kind) {
+  if (!AUDIO) return; const c = AUDIO, t = c.currentTime + .01;
+  const tone = (f, at, len, v, type = 'sine') => { const o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(0, t + at); g.gain.linearRampToValueAtTime(v, t + at + .005); g.gain.exponentialRampToValueAtTime(.0001, t + at + len);
+    o.connect(g).connect(c.destination); o.start(t + at); o.stop(t + at + len + .05); };
+  const noise = (at, len, v, f, q = 1) => { const b = c.createBuffer(1, c.sampleRate * len, c.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+    const s = c.createBufferSource(), bp = c.createBiquadFilter(), g = c.createGain(); s.buffer = b; bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = q; g.gain.value = v;
+    s.connect(bp).connect(g).connect(c.destination); s.start(t + at); };
+  if (kind === 'ding') { tone(1568, 0, 1.4, .25); tone(2093, .02, 1.2, .12); tone(1568, .45, 1.4, .2); tone(2637, .47, 1, .08); }
+  if (kind === 'crack') { noise(0, .06, .9, 2500, 2); noise(.09, .05, .6, 3000, 2); }
+  if (kind === 'puff') noise(0, .5, .5, 700, .7);
+  if (kind === 'spark') [0, .07, .14, .21].forEach((a, i) => tone(2000 + i * 300, a, .25, .06));
+  if (kind === 'splash') { noise(0, .35, .5, 900, 1.5); tone(500, .05, .15, .05); }
+  if (kind === 'plop') { const o = c.createOscillator(), g = c.createGain(); o.frequency.setValueAtTime(420, t); o.frequency.exponentialRampToValueAtTime(140, t + .15);
+    g.gain.setValueAtTime(.3, t); g.gain.exponentialRampToValueAtTime(.0001, t + .2); o.connect(g).connect(c.destination); o.start(t); o.stop(t + .25); }
+  if (kind === 'tick') tone(1200, 0, .05, .08, 'square');
+  if (kind === 'pop') tone(880, 0, .12, .12);
+}
+
+/* ---------- 🧁 baking: pour the ingredients, stir, oven, decorate ---------- */
+function bakeGame() {
+  const B = window.BAKE, A = window.BAKE_ART, byId = id => B.find(x => x.id === id);
+  const order = B.map(b => b.id);
+  let step = 0, busy = true, hintT = 0;
+  const my = show(`<div class="kitchen"><div class="tiles-wall"></div><div class="counter"></div></div>${topbar(order.length + 3, 0)}
+    <div class="bowl" id="bowl">${A.BOWL}<div class="spoon" id="spoon">${A.SPOON}</div><div class="mixring" id="mixring"></div></div>
+    <div class="pantry" id="pantry">${shuffle(order.slice()).map(id => `<div class="ing" data-id="${id}">${A.ING[id]}</div>`).join('')}</div>
+    <div class="oven" id="oven">${A.OVEN}</div><div class="cake" id="cake">${A.CAKE}</div>
+    <div class="pantry deco" id="deco">${['lukier', 'posypka', 'truskawki'].map(id => `<div class="ing" data-d="${id}">${A.DECO[id]}</div>`).join('')}</div>
+    ${chars()}`);
+  bindHome();
+  const bowl = $('#bowl'), alive = () => $('#bowl') === bowl;
+  const batter = $('.batter', bowl), swirl = $('.swirl', bowl);
+  const dots = () => $$('.dots i');
+  const dot = n => { const d = dots()[n]; if (d) d.classList.add('on'); };
+  const bi = () => !S.plOnly;
+  const target = () => byId(order[step]);
+  const where = c => `Gdzie ${c.plural ? 'są' : 'jest'} ${c.pl}?`;
+  const ask = c => [['pip', 'pl', `${where(c)} ${c.verbPL} ${c.acc}!`], ...(bi() ? [['fifi', 'en', `${c.verbEN} ${c.en}!`]] : [])];
+  const hint = sel => { clearTimeout(hintT); hintT = setTimeout(() => { if (alive() && !busy) { const e = $(sel()); e && e.classList.add('hint'); } }, 9000); };
+  const clearHint = () => { clearTimeout(hintT); $$('.hint').forEach(x => x.classList.remove('hint')); };
+  const prompt = async () => { busy = false; hint(() => `.ing[data-id="${target().id}"]`); await seq(ask(target())); };
+  let mode = 'ing';
+  $('#again').onclick = () => { hush(); if (mode === 'ing') seq(ask(target())); else if (mode === 'mix') seq([['pip', 'pl', 'Mieszamy!'], ...(bi() ? [['fifi', 'en', 'Stir round and round!']] : [])]); };
+
+  /* 1. ingredients */
+  let level = 0;
+  const pourFx = (kind) => {
+    const r = bowl.getBoundingClientRect();
+    for (let i = 0; i < (kind === 'puff' ? 10 : 7); i++) {
+      const d = document.createElement('div'); d.className = 'bit bit-' + kind;
+      d.style.left = (r.left + r.width * (.35 + Math.random() * .3)) + 'px'; d.style.top = (r.top + r.height * .1) + 'px';
+      d.style.setProperty('--dx', (Math.random() * 16 - 8) + 'vmin');
+      document.body.appendChild(d); setTimeout(() => d.remove(), 1200);
+    }
+  };
+  const put = el => {
+    busy = true; clearHint(); const c = byId(el.dataset.id);
+    const R = bowl.getBoundingClientRect(), E = el.getBoundingClientRect();
+    el.style.transition = 'transform .5s cubic-bezier(.4,.1,.3,1)';
+    el.style.transform = `translate(${R.left + R.width * .55 - (E.left + E.width / 2)}px, ${R.top - E.height * .4 - E.top}px) rotate(-55deg)`;
+    setTimeout(() => {
+      sfx(c.fx); pourFx(c.fx);
+      level++; batter.setAttribute('opacity', '1'); batter.setAttribute('fill', c.col);
+      batter.setAttribute('ry', 14 + level * 3); batter.setAttribute('cy', 76 - level * 2.5);
+      bowl.classList.remove('bump'); void bowl.offsetWidth; bowl.classList.add('bump');
+    }, 520);
+    setTimeout(() => { el.classList.add('used'); success(c); }, 1100);
+  };
+  const wrong = async el => {
+    const o = byId(el.dataset.id), c = target(); hush(); const t = tk;
+    el.classList.remove('no'); void el.offsetWidth; el.classList.add('no');
+    await seq([['pip', 'pl', `To ${o.plural ? 'są' : 'jest'} ${o.pl}.`], ...(bi() ? [['fifi', 'en', `That's the ${o.en}!`]] : []), ['pip', 'pl', where(c)]], t);
+  };
+  const success = async c => {
+    step++; dot(step - 1); hush(); const t = tk; cheer('pip');
+    if (!await seq([['pip', 'pl', `${cap(c.pl)}! ${praisePL()}`], ...(bi() ? [['fifi', 'en', praiseEN()]] : [])], t)) return;
+    if (step >= order.length) return mixPhase();
+    prompt();
+  };
+  $$('#pantry .ing').forEach(el => el.addEventListener('pointerdown', e => {
+    if (mode !== 'ing' || busy || el.classList.contains('used')) return;
+    e.preventDefault(); unlockAudio();
+    try { el.setPointerCapture(e.pointerId); } catch (x) {}
+    const sx = e.clientX, sy = e.clientY; let moved = false;
+    el.style.transition = 'none'; el.classList.add('drag');
+    const mv = ev => { const dx = ev.clientX - sx, dy = ev.clientY - sy; if (Math.hypot(dx, dy) > 12) moved = true; el.style.transform = `translate(${dx}px, ${dy}px) scale(1.12)`; };
+    const up = ev => {
+      el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up);
+      el.classList.remove('drag');
+      const R = bowl.getBoundingClientRect(), pad = 40;
+      const over = ev.clientX > R.left - pad && ev.clientX < R.right + pad && ev.clientY > R.top - pad * 2 && ev.clientY < R.bottom + pad;
+      if (busy || (moved && !over)) { el.style.transition = ''; el.style.transform = ''; return; }
+      if (el.dataset.id === target().id) return put(el);
+      el.style.transition = ''; el.style.transform = ''; wrong(el);
+    };
+    el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+  }));
+
+  /* 2. stirring: finger round and round in the bowl (or keep tapping it) */
+  async function mixPhase() {
+    mode = 'mix'; busy = true; clearHint(); const t = tk;
+    $('#pantry').classList.add('gone'); bowl.classList.add('mixing');
+    batter.setAttribute('fill', '#F7DFA6');
+    if (!await seq([['pip', 'pl', 'Mieszamy!'], ...(bi() ? [['fifi', 'en', 'Let\'s mix! Stir round and round!']] : [])], t)) return;
+    busy = false;
+    let turn = 0, lastA = null; const need = Math.PI * 2 * 3;   // three times round
+    const spoon = $('#spoon'), ring = $('#mixring');
+    const setP = () => { const p = Math.min(1, turn / need); ring.style.setProperty('--p', p); swirl.setAttribute('opacity', '1'); swirl.style.transform = `rotate(${turn * 57}deg)`;
+      batter.setAttribute('fill', p > .66 ? '#F2CF85' : p > .33 ? '#F5D896' : '#F7DFA6'); if (p >= 1) mixed(); };
+    const at = e => { const R = bowl.getBoundingClientRect(); return Math.atan2(e.clientY - (R.top + R.height * .32), e.clientX - (R.left + R.width / 2)); };
+    const moveSpoon = e => { const R = bowl.getBoundingClientRect(); spoon.style.left = (e.clientX - R.left) + 'px'; spoon.style.top = (e.clientY - R.top) + 'px'; };
+    let down = false, done = false, lastSnd = 0;
+    const mixed = async () => {
+      if (done) return; done = true; busy = true; bowl.classList.remove('mixing'); dot(order.length);
+      cheer(); confettiSmall(); hush(); const tt = tk;
+      if (!await seq([['pip', 'pl', `Brawo! Gotowe, ${KID.plCall}!`], ...(bi() ? [['fifi', 'en', 'Yay! All mixed!']] : [])], tt)) return;
+      ovenPhase();
+    };
+    bowl.addEventListener('pointerdown', e => { if (mode !== 'mix' || done) return; unlockAudio(); down = true; lastA = at(e); moveSpoon(e); try { bowl.setPointerCapture(e.pointerId); } catch (x) {}
+      turn += Math.PI / 3; setP(); clearHint(); });
+    bowl.addEventListener('pointermove', e => { if (!down || done) return; moveSpoon(e); const a = at(e); let d = a - lastA;
+      if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; turn += Math.abs(d); lastA = a; setP();
+      if (performance.now() - lastSnd > 350) { lastSnd = performance.now(); sfx('splash'); } });
+    const end = () => { down = false; }; bowl.addEventListener('pointerup', end); bowl.addEventListener('pointercancel', end);
+    hint(() => '#bowl');
+  }
+
+  /* 3. oven: tap the bowl → into the oven → count down → ding! */
+  async function ovenPhase() {
+    mode = 'oven'; const t = tk;
+    $('#oven').classList.add('in'); bowl.classList.add('tap-me');
+    if (!await seq([['pip', 'pl', 'Do piekarnika!'], ...(bi() ? [['fifi', 'en', 'Into the oven! Tap the bowl!']] : [])], t)) return;
+    let gone = false;
+    const go = async () => {
+      if (gone || !alive()) return; gone = true; unlockAudio(); hush(); const tt = tk;
+      bowl.classList.remove('tap-me'); bowl.classList.add('to-oven'); dot(order.length + 1);
+      const glow = $('.oven-glow'), timer = $('.oven-timer');
+      await wait(900); if (tt !== tk) return; glow.style.transition = 'opacity 1s'; glow.setAttribute('opacity', '.75');
+      const nums = ['Pięć!', 'Cztery!', 'Trzy!', 'Dwa!', 'Jeden!'];
+      for (let i = 0; i < 5; i++) { timer.textContent = String(5 - i); sfx('tick'); if (!await seq([['pip', 'pl', nums[i]]], tt)) return; await wait(250); }
+      timer.textContent = '0'; sfx('ding');
+      if (!await seq([['pip', 'pl', 'Ding! Gotowe!'], ...(bi() ? [['fifi', 'en', "Ding! It's ready!"]] : [])], tt)) return;
+      glow.setAttribute('opacity', '0'); $('#oven').classList.add('out'); $('#cake').classList.add('in');
+      await wait(700); if (tt !== tk) return;
+      decoPhase();
+    };
+    bowl.addEventListener('click', go); setTimeout(() => { if (alive() && !gone) bowl.classList.add('hint'); }, 8000);
+  }
+
+  /* 4. decorate: icing, sprinkles, strawberries */
+  async function decoPhase() {
+    mode = 'deco'; const t = tk; $('#deco').classList.add('in'); dot(order.length + 2);
+    const D = [{ id: 'lukier', pl: 'lukier', en: 'icing', cls: '.icing' }, { id: 'posypka', pl: 'posypka', en: 'sprinkles', cls: '.sprinkles' }, { id: 'truskawki', pl: 'truskawki', en: 'strawberries', cls: '.berries', plural: true }];
+    let k = 0;
+    const askD = () => seq([['pip', 'pl', `Gdzie ${D[k].plural ? 'są' : 'jest'} ${D[k].pl}?`], ...(bi() ? [['fifi', 'en', `Now the ${D[k].en}!`]] : [])]);
+    $$('#deco .ing').forEach(el => el.onclick = async () => {
+      if (mode !== 'deco' || el.classList.contains('used')) return; unlockAudio();
+      const d = D[k]; if (!d) return;
+      if (el.dataset.d !== d.id) { el.classList.remove('no'); void el.offsetWidth; el.classList.add('no'); const o = D.find(x => x.id === el.dataset.d); hush(); seq([['pip', 'pl', `To ${o.plural ? 'są' : 'jest'} ${o.pl}.`], ['pip', 'pl', `Gdzie ${d.plural ? 'są' : 'jest'} ${d.pl}?`]]); return; }
+      el.classList.add('used'); hush(); sfx('pop'); const part = $('#cake ' + d.cls); part.setAttribute('opacity', '1'); part.classList.add('popin');
+      k++; const tt = tk;
+      if (!await seq([['pip', 'pl', `${cap(d.pl)}! ${praisePL()}`]], tt)) return;
+      if (k < D.length) return askD();
+      finish();
+    });
+    if (!await seq([['pip', 'pl', 'Ozdabiamy!'], ...(bi() ? [['fifi', 'en', "Let's decorate the cake!"]] : [])], t)) return;
+    if (k === 0) askD();                         // (taps work already while Pip is talking)
+  }
+  async function finish() {
+    mode = 'end'; const t = tk; cheer(); confettiSmall(); $('#cake').classList.add('done');
+    if (!await seq([['pip', 'pl', `Smacznego, ${KID.plCall}!`], ...(bi() ? [['fifi', 'en', 'Yummy! Enjoy your cake!']] : [])], t)) return;
+    await wait(800); if (t !== tk) return;
+    const list = B.map(b => ({ pl: cap(b.pl) + '!', en: cap(b.en), art: A.ING[b.id], whyEn: b.plural ? `These are the ${b.en}!` : `This is the ${b.en}!` }));
+    phraseGame(list, { intro: [['pip', 'pl', `Teraz mówimy, ${KID.plCall}!`], ['fifi', 'en', "Now let's say the words!"]], done: () => reward(bakeGame) });
+  }
+
+  (async () => {
+    await wait(250); if (!alive()) return;
+    if (!await seq([['pip', 'pl', `Pieczemy ciasto, ${KID.plCall}!`], ...(bi() ? [['fifi', 'en', "Ooh! Let's bake a cake!"]] : [])], my)) return;
+    prompt();
+  })();
 }
 
 /* ---------- songs: list + song screen with an animation ---------- */
