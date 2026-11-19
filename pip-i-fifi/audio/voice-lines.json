@@ -769,5 +769,13 @@
 {"id":"1b2c2105","lang":"pl","text":"Truskawki!"},
 {"id":"0a32d8a8","lang":"pl","text":"Wlej mleko!"},
 {"id":"15f56ed6","lang":"pl","text":"Wsyp cukier!"},
-{"id":"0d1bd1c9","lang":"pl","text":"Wsyp mąkę!"}
+{"id":"0d1bd1c9","lang":"pl","text":"Wsyp mąkę!"},
+{"id":"4111cc02","lang":"en","text":"Those are the trousers!"},
+{"id":"29a3dc3e","lang":"en","text":"Those are the boots!"},
+{"id":"6d0752f7","lang":"en","text":"Those are the gloves!"},
+{"id":"5f98d1fc","lang":"en","text":"Those are the wellies!"},
+{"id":"e688b4f0","lang":"en","text":"Those are the shorts!"},
+{"id":"fb0cfa31","lang":"en","text":"Those are the flip-flops!"},
+{"id":"ae731f13","lang":"en","text":"Those are the sunglasses!"},
+{"id":"0803550f","lang":"en","text":"Those are the eggs!"}
 ]

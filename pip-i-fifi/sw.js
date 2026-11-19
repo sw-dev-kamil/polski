@@ -1,5 +1,5 @@
 /* Offline cache. Bump VERSION when files change. */
-const VERSION = 'pipfifi-v29';
+const VERSION = 'pipfifi-v30';
 const AUDIO_CACHE = 'pipfifi-audio';   // recorded voice pieces never change (name = id) → kept across updates
 const FILES = ['./', './index.html', './style.css', './game.js', './characters.js', './content.js', './music.js', './dressup-art.js', './bake-art.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];

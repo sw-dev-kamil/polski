@@ -854,7 +854,7 @@ function dressGame(season, mode) {
   const wrong = async o => {
     const c = target(); hush(); const t = tk;
     const lines = [['pip', 'pl', `To ${jest(o)} ${o.pl}.`]];
-    if (!S.plOnly) lines.push(['fifi', 'en', `That's the ${o.en}!`]);
+    if (!S.plOnly) lines.push(['fifi', 'en', o.plural ? `Those are the ${o.en}!` : `That's the ${o.en}!`]);
     lines.push(['pip', 'pl', dressing ? where(c) : offPL(c)]);
     await seq(lines, t);
   };
@@ -1137,7 +1137,7 @@ function bakeGame() {
   const wrong = async el => {
     const o = byId(el.dataset.id), c = target(); hush(); const t = tk;
     el.classList.remove('no'); void el.offsetWidth; el.classList.add('no');
-    await seq([['pip', 'pl', `To ${o.plural ? 'są' : 'jest'} ${o.pl}.`], ...(bi() ? [['fifi', 'en', `That's the ${o.en}!`]] : []), ['pip', 'pl', where(c)]], t);
+    await seq([['pip', 'pl', `To ${o.plural ? 'są' : 'jest'} ${o.pl}.`], ...(bi() ? [['fifi', 'en', o.plural ? `Those are the ${o.en}!` : `That's the ${o.en}!`]] : []), ['pip', 'pl', where(c)]], t);
   };
   const success = async c => {
     step++; dot(step - 1); hush(); const t = tk; cheer('pip');
