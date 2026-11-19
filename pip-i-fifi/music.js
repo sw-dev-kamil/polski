@@ -7,7 +7,7 @@
 'use strict';
 const SEMI = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const hz = n => { const m = /^([A-G])(#|b)?(\d)$/.exec(n); const s = SEMI[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0); return 440 * Math.pow(2, (s + 12 * (+m[3] + 1) - 69) / 12); };
-const CH = { C: ['C', 'E', 'G'], F: ['F', 'A', 'C'], G: ['G', 'B', 'D'], Am: ['A', 'C', 'E'] };
+const CH = { C: ['C', 'E', 'G'], F: ['F', 'A', 'C'], G: ['G', 'B', 'D'], Am: ['A', 'C', 'E'], D: ['D', 'F#', 'A'] };
 
 /* ---------- instruments ---------- */
 function env(c, out, t, peak, decay, attack = 0.004) {
@@ -48,6 +48,15 @@ function shaker(c, out, t, v) {
   s.connect(hp).connect(env(c, out, t, v, 0.045, 0.005)); s.start(t); s.stop(t + 0.1);
 }
 
+function sleighBells(c, out, t, v) {          // jingle: a few bright metallic noise bursts
+  if (!NOISE || NOISE.sampleRate !== c.sampleRate) shaker(c, c.createGain(), 0, 0);
+  [0, .018, .041].forEach((d, i) => {
+    const s = c.createBufferSource(); s.buffer = NOISE;
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 7000 + i * 900; bp.Q.value = 6;
+    s.connect(bp).connect(env(c, out, t + d, v * (1 - i * .25), .09, .002)); s.start(t + d); s.stop(t + d + .12);
+  });
+}
+
 /* ---------- songs: [bar, beat, note, beats] ---------- */
 function mel(bars) { const out = []; bars.forEach((bar, b) => { let beat = 0; bar.forEach(([n, len]) => { if (n) out.push([b, beat, n, len]); beat += len; }); }); return out; }
 
@@ -74,6 +83,33 @@ const WALK = {
       [0, 2].forEach(k => { bass(c, out, t0 + k * b, hz((k ? fifth : r) + '3'), .42, b * .9); boop(c, out, t0 + k * b, .45); });
       [1, 3].forEach(k => [third + '4', fifth + '4'].forEach(n => marimba(c, out, t0 + k * b, hz(n), .13)));
       for (let k = 0; k < 4; k++) shaker(c, out, t0 + (k + .5) * b, .07);
+    });
+  }
+};
+
+/* Outside in the snow: "Jingle Bells" chorus (J. L. Pierpont, 1857 — public domain), 132 bpm */
+const SNOW = {
+  bpm: 132, bars: 9, loop: false,
+  chords: ['C', 'C', 'C', 'C', 'F', 'C', 'G', 'C', 'C'],
+  melody: mel([
+    [['E5', 1], ['E5', 1], ['E5', 2]],
+    [['E5', 1], ['E5', 1], ['E5', 2]],
+    [['E5', 1], ['G5', 1], ['C5', 1.5], ['D5', .5]],
+    [['E5', 4]],
+    [['F5', 1], ['F5', 1], ['F5', 1.5], ['F5', .5]],
+    [['F5', 1], ['E5', 1], ['E5', 1], ['E5', .5], ['E5', .5]],
+    [['G5', 1], ['G5', 1], ['F5', 1], ['D5', 1]],
+    [['C5', 3], [null, 1]],
+    [['C6', 2]]
+  ]),
+  play(c, out, b) {
+    this.melody.forEach(([bar, beat, n]) => { const t = (bar * 4 + beat) * b; marimba(c, out, t, hz(n), .5); glock(c, out, t, hz(n) * 2, .1); });
+    this.chords.forEach((ch, bar) => {
+      const [r, third, fifth] = CH[ch], t0 = bar * 4 * b;
+      if (bar === 8) { glock(c, out, t0, hz('C6'), .3); glock(c, out, t0, hz('E6'), .2); bass(c, out, t0, hz('C3'), .4, 1.6); sleighBells(c, out, t0, .5); return; }
+      [0, 2].forEach(k => { bass(c, out, t0 + k * b, hz((k ? fifth : r) + '3'), .38, b * .9); boop(c, out, t0 + k * b, .3); });
+      [1, 3].forEach(k => [third + '4', fifth + '4'].forEach(n => marimba(c, out, t0 + k * b, hz(n), .1)));
+      for (let k = 0; k < 8; k++) sleighBells(c, out, t0 + k * b / 2, k % 2 ? .22 : .38);   // sleigh bells on every half beat
     });
   }
 };
@@ -136,7 +172,7 @@ function render(song) {
 }
 
 /* ---------- player ---------- */
-const SONGS = { walk: WALK, menu: MENU };
+const SONGS = { walk: WALK, menu: MENU, snow: SNOW };
 window.Music = {
   on: true, getCtx: () => null, songs: {}, ready: null,
   src: null, g: null, cur: null, base: 0, ducked: false, undo: 0,
@@ -149,6 +185,7 @@ window.Music = {
     return name ? this.ready[name] : Promise.all(Object.values(this.ready));
   },
   level() { return this.base * (this.ducked ? 0.3 : 1); },
+  length(name) { return this.songs[name] ? this.songs[name].loopEnd : 0; },
   play(name, vol) {
     if (!this.on) return;
     if (this.cur === name) return;

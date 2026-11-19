@@ -122,7 +122,7 @@ async function recPlay(ids) {                // resolves true when finished (or 
   if (bufs.some(b => !b)) return false;
   return new Promise(res => {
     let t = AUDIO.currentTime + 0.02;
-    bufs.forEach((b, i) => { const s = AUDIO.createBufferSource(); s.buffer = b; s.connect(AUDIO.destination); s.start(t); REC.playing.push(s); t += b.duration + (i < bufs.length - 1 ? 0.08 : 0); });
+    bufs.forEach((b, i) => { const s = AUDIO.createBufferSource(); s.buffer = b; s.connect(AUDIO.destination); s.start(t); REC.playing.push(s); t += b.duration + (i < bufs.length - 1 ? 0.15 : 0); });
     const timer = setTimeout(() => { REC.stop = null; REC.playing = []; res(true); }, (t - AUDIO.currentTime) * 1000 + 30);
     REC.stop = () => { clearTimeout(timer); res(true); };
   });
@@ -686,9 +686,13 @@ function dressGame(mode) {
     if (dressing) {
       if (!await seq([['fifi', 'en', `Yay! All dressed, ${KID.en}! Let's go outside!`], ['pip', 'pl', 'Hura! Idziemy na dwór!']], t)) return;
       $('#room').classList.add('out'); $('.toybox').classList.add('out');
-      kid.classList.add('hop'); snow(5); confettiSmall();
-      if (!await seq([['pip', 'pl', 'Śnieg! Hura!'], ['fifi', 'en', 'Wheee! Snow!']], t)) return;
-      await wait(2200); if (t !== tk) return;
+      M.play('snow', .6); const t0 = performance.now();           // Jingle Bells while they play in the snow
+      kid.classList.add('hop'); snow(14); confettiSmall();
+      const dance = setInterval(() => { if (t !== tk) return clearInterval(dance); cheer(); }, 1800);
+      if (!await seq([['pip', 'pl', 'Śnieg! Hura!'], ['fifi', 'en', 'Wheee! Snow!']], t)) { clearInterval(dance); return; }
+      const left = (M.on && M.length('snow') ? M.length('snow') * 1000 : 3000) - (performance.now() - t0);
+      await wait(Math.max(1500, left)); clearInterval(dance); if (t !== tk) return;
+      M.stop(1);
       sayClothes(order, true);
     } else {
       if (!await seq([['pip', 'pl', `Brawo, ${KID.plCall}! Gotowe!`], ['fifi', 'en', 'All done! Well done!']], t)) return;
