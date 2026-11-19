@@ -316,3 +316,17 @@ body.sunny #screen::before { content: ''; position: fixed; inset: 0; background:
 .song-play { position: absolute; left: 50%; top: 14vh; transform: translateX(-50%); width: 16vmin; height: 16vmin; font-size: 6vmin; font-weight: 900; color: #fff; z-index: 6; }
 .song-title { position: absolute; left: 50%; top: 33vh; transform: translateX(-50%); font-size: 4vmin; font-weight: 900; color: #5A4632; background: rgba(255,255,255,.75); padding: 1vmin 3vmin; border-radius: 99px; white-space: nowrap; z-index: 6; }
 .song-play { animation: none; margin: 0; }
+
+/* ============ places on the main screen ============ */
+.world-bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; animation: fadeIn .5s ease; }
+.world-bg .scene { position: absolute; inset: 0; width: 100%; height: 100%; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.worlds { position: absolute; top: calc(env(safe-area-inset-top) + 2vmin); left: 50%; transform: translateX(-50%); display: flex; gap: 2vmin; z-index: 5; }
+.wbtn { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 15vmin; height: 13vmin; border-radius: 4vmin;
+  background: rgba(255,255,255,.7); box-shadow: 0 .8vmin 0 rgba(0,0,0,.08); transition: transform .15s, background .2s; }
+.wbtn span { font-size: 6vmin; line-height: 1; }
+.wbtn b { font-size: 1.9vmin; font-weight: 800; color: #7A6A60; margin-top: .6vmin; white-space: nowrap; }
+.wbtn.on { background: #fff; transform: translateY(.6vmin) scale(1.08); box-shadow: 0 0 0 .8vmin #FFC93C, 0 .8vmin 0 rgba(0,0,0,.08); }
+.menu.world-menu { top: 22vh; z-index: 3; }
+.world-menu .tile .l { text-align: center; padding: 0 1vmin; }
+@media (orientation: portrait) { .wbtn { width: 17vmin; } .menu.world-menu { top: 18vh; } }

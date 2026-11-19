@@ -107,3 +107,65 @@ window.CLOTHES = window.SEASONS.winter.clothes;     // (older code)
 window.SONGS = [
   { id: "pociag", title: "Jedzie pociąg z daleka", e: "🚂", file: "songs/pociag.mp3", anim: "train", fallback: "train" }
 ];
+
+/* ===== New topics (phrase games): pl, en, emoji, why (Fifi: "<why> <en>") or whyEn (Fifi's whole line) ===== */
+window.TOPICS = {
+  food: [   // 🏠 home — meals
+    { pl: "Smacznego!", en: "Enjoy your meal!", emoji: "🍽️", why: "Before we eat, everyone says:" },
+    { pl: "Jestem głodna.", en: "I'm hungry.", emoji: "😋", why: "When your tummy is empty, say:" },
+    { pl: "Jeszcze, proszę!", en: "More, please!", emoji: "🥄", why: "When you want more, say:" },
+    { pl: "Pyszne!", en: "Yummy!", emoji: "🤤", why: "When it tastes good, say:" },
+    { pl: "Poproszę wodę.", en: "Water, please.", emoji: "💧", why: "When you want water, say:" },
+    { pl: "Już nie chcę.", en: "I don't want any more.", emoji: "🙅‍♀️", why: "When you are full, say:" }
+  ],
+  bath: [   // 🏠 home — washing
+    { pl: "Myjemy rączki!", en: "Let's wash our hands!", emoji: "🧼", why: "Before we eat, we say:" },
+    { pl: "Myjemy ząbki!", en: "Let's brush our teeth!", emoji: "🪥", why: "In the morning and evening, we say:" },
+    { pl: "Ciepła woda!", en: "Warm water!", emoji: "🛁", why: "In the bath, say:" },
+    { pl: "Ręcznik, proszę.", en: "Towel, please.", emoji: "🧺", why: "When you are all wet, say:" },
+    { pl: "Piżamka!", en: "Pyjamas!", emoji: "👚", whyEn: "Before bed we put on our pyjamas!" }
+  ],
+  bed: [    // 🏠 home — bedtime
+    { pl: "Jestem zmęczona.", en: "I'm tired.", emoji: "🥱", why: "When you want to sleep, say:" },
+    { pl: "Dobranoc!", en: "Good night!", emoji: "🌙", why: "When it's time to sleep, say:" },
+    { pl: "Kocham cię!", en: "I love you!", emoji: "❤️", why: "To mummy and daddy, say:" },
+    { pl: "Śpij dobrze!", en: "Sleep well!", emoji: "🧸", why: "To your teddy, say:" },
+    { pl: "Dzień dobry!", en: "Good morning!", emoji: "☀️", why: "When you wake up, say:" }
+  ],
+  teacher: [ // 🏫 nursery — talking to the teacher
+    { pl: "Dzień dobry!", en: "Good morning!", emoji: "👋", why: "When you come to nursery, say:" },
+    { pl: "Proszę Pani!", en: "Excuse me, Miss!", emoji: "🙋‍♀️", why: "When you want the teacher, say:" },
+    { pl: "Nie rozumiem.", en: "I don't understand.", emoji: "🤔", why: "When you don't understand, say:" },
+    { pl: "Mogę?", en: "May I?", emoji: "🤲", why: "When you want to do something, ask:" },
+    { pl: "Do widzenia!", en: "Goodbye!", emoji: "👋", why: "When you go home, say to your teacher:" }
+  ],
+  arts: [   // 🏫 nursery — activities
+    { pl: "Kredki!", en: "Crayons!", emoji: "🖍️", whyEn: "We draw with crayons!" },
+    { pl: "Rysuję!", en: "I'm drawing!", emoji: "✏️", why: "When you draw a picture, say:" },
+    { pl: "Malujemy!", en: "We're painting!", emoji: "🎨", why: "When we paint, we say:" },
+    { pl: "Klej!", en: "Glue!", emoji: "🧴", whyEn: "We stick paper with glue!" },
+    { pl: "Zobacz!", en: "Look!", emoji: "👀", why: "When you want to show your picture, say:" }
+  ],
+  playground: [ // 🌳 outside — playground
+    { pl: "Huśtawka!", en: "Swing!", emoji: "🎠", whyEn: "This is the swing!" },
+    { pl: "Pobujaj mnie!", en: "Push me, please!", emoji: "🙌", why: "On the swing, say:" },
+    { pl: "Zjeżdżalnia!", en: "Slide!", emoji: "🛝", whyEn: "This is the slide! Wheee!" },
+    { pl: "Piaskownica!", en: "Sandpit!", emoji: "🏖️", whyEn: "This is the sandpit!" },
+    { pl: "Złap mnie!", en: "Catch me!", emoji: "🏃‍♀️", why: "When you play chase, say:" },
+    { pl: "Uwaga!", en: "Watch out!", emoji: "⚠️", why: "When someone is in the way, say:" }
+  ],
+  beach: [  // 🏖️ holidays — beach
+    { pl: "Morze!", en: "The sea!", emoji: "🌊", whyEn: "Look, the sea!" },
+    { pl: "Piasek!", en: "Sand!", emoji: "🏖️", whyEn: "This is sand!" },
+    { pl: "Muszelka!", en: "A shell!", emoji: "🐚", whyEn: "Look, a shell!" },
+    { pl: "Budujemy zamek!", en: "Let's build a castle!", emoji: "🏰", why: "With the sand, say:" },
+    { pl: "Pływamy!", en: "Let's swim!", emoji: "🏊‍♀️", why: "In the water, say:" }
+  ],
+  icecream: [ // 🏖️ holidays — ice cream
+    { pl: "Poproszę loda!", en: "An ice cream, please!", emoji: "🍦", why: "At the ice-cream shop, say:" },
+    { pl: "Truskawkowe!", en: "Strawberry!", emoji: "🍓", why: "When you want strawberry, say:" },
+    { pl: "Czekoladowe!", en: "Chocolate!", emoji: "🍫", why: "When you want chocolate, say:" },
+    { pl: "Zimne!", en: "Cold!", emoji: "🧊", why: "When you lick your ice cream, say:" },
+    { pl: "Dziękuję!", en: "Thank you!", emoji: "💛", why: "When you get your ice cream, say:" }
+  ]
+};

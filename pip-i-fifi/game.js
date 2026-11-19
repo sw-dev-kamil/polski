@@ -523,21 +523,85 @@ const TILES = [
   { id: 'needs',   e: '🥤', en: 'At nursery', pl: 'W przedszkolu', s: '#D3EFC9' },
   { id: 'dress',   e: '🧥', en: 'Getting dressed', pl: 'Ubieramy się', s: '#E4D4F4' },
   { id: 'songs',   e: '🎵', en: 'Songs', pl: 'Piosenki', s: '#FFD3E4' },
-  { id: 'stickers',e: '⭐', en: 'Stickers', pl: 'Naklejki', s: '#F7E6A6' }
+  { id: 'stickers',e: '⭐', en: 'Stickers', pl: 'Naklejki', s: '#F7E6A6' },
+  { id: 'food',      e: '🍽️', en: 'Mealtime',      pl: 'Jedzenie',     s: '#F8D7B8' },
+  { id: 'bath',      e: '🛁', en: 'Bath time',     pl: 'Kąpiel',       s: '#C9E8F5' },
+  { id: 'bed',       e: '🌙', en: 'Good night',    pl: 'Dobranoc',     s: '#D9D2F2' },
+  { id: 'teacher',   e: '👩‍🏫', en: 'Hello, teacher', pl: 'Dzień dobry, Pani!', s: '#F7D0D9' },
+  { id: 'arts',      e: '🎨', en: 'Arts and crafts', pl: 'Zajęcia',    s: '#FCE3B0' },
+  { id: 'playground',e: '🛝', en: 'Playground',    pl: 'Plac zabaw',   s: '#CFEBC4' },
+  { id: 'beach',     e: '🌊', en: 'At the beach',  pl: 'Plaża',        s: '#BFE6F2' },
+  { id: 'icecream',  e: '🍦', en: 'Ice cream',     pl: 'Lody',         s: '#FAD3E6' }
 ];
-function home(greet) {
-  const my = show(`
+/* places on the main screen: each has its own scene and its own tiles (⭐ stickers everywhere) */
+const WORLDS = [
+  { id: 'home',     e: '🏠', pl: 'W domu',         en: 'At home',          tiles: ['food', 'bath', 'bed', 'stickers'] },
+  { id: 'nursery',  e: '🏫', pl: 'W przedszkolu',  en: 'At nursery',       tiles: ['teacher', 'friends', 'needs', 'arts', 'dress', 'songs', 'stickers'] },
+  { id: 'outside',  e: '🌳', pl: 'Na dworze',      en: 'Playing outside',  tiles: ['playground', 'colours', 'animals', 'count', 'stickers'] },
+  { id: 'holidays', e: '🏖️', pl: 'Wakacje',        en: 'Holidays',         tiles: ['beach', 'icecream', 'stickers'] }
+];
+const SCENES = {
+  home: `<svg class="scene" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMax slice">
+    <rect width="1200" height="800" fill="#FFF1DC"/><rect y="560" width="1200" height="240" fill="#E3C69E"/>
+    <rect y="556" width="1200" height="10" fill="#C9A57A"/>
+    <rect x="120" y="140" width="260" height="220" rx="14" fill="#BFE6FF" stroke="#fff" stroke-width="16"/>
+    <path d="M250 140 V360 M120 250 H380" stroke="#fff" stroke-width="10"/><circle cx="320" cy="200" r="28" fill="#FFE066"/>
+    <path d="M100 130 q40 120 0 250 h-30 V120 Z M400 130 q-40 120 0 250 h30 V120 Z" fill="#FF9AA8"/>
+    <rect x="780" y="430" width="340" height="120" rx="40" fill="#7FB3E6"/><rect x="760" y="470" width="380" height="110" rx="30" fill="#6A9FD6"/>
+    <rect x="780" y="575" width="20" height="30" fill="#5A4632"/><rect x="1100" y="575" width="20" height="30" fill="#5A4632"/>
+    <circle cx="840" cy="470" r="30" fill="#FFC93C"/><circle cx="1060" cy="470" r="30" fill="#FF7A9A"/>
+    <ellipse cx="560" cy="690" rx="260" ry="50" fill="#F7B6C2"/><ellipse cx="560" cy="690" rx="200" ry="34" fill="#FFD1DA"/>
+    <rect x="1010" y="230" width="12" height="200" fill="#8B6B4A"/><path d="M970 230 h90 l-20 -70 h-50 Z" fill="#FFE7A8"/>
+  </svg>`,
+  nursery: `<svg class="scene" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMax slice">
+    <rect width="1200" height="800" fill="#FDF6E3"/><rect y="560" width="1200" height="240" fill="#D9C2A3"/><rect y="556" width="1200" height="10" fill="#B99A75"/>
+    <path d="M0 60 Q300 130 600 60 Q900 130 1200 60" stroke="#C99A6A" stroke-width="4" fill="none"/>
+    ${['#FF7A9A', '#FFC93C', '#4CC373', '#5B8DEF', '#C77DFF', '#FF9A3C', '#FF7A9A', '#FFC93C', '#4CC373', '#5B8DEF', '#C77DFF'].map((c, i) => `<path d="M${50 + i * 105} ${72 + Math.sin(i / 1.7) * 18} l26 0 -13 34 Z" fill="${c}"/>`).join('')}
+    <rect x="130" y="200" width="300" height="190" rx="12" fill="#3F6B5A" stroke="#C99A6A" stroke-width="12"/>
+    <text x="280" y="310" text-anchor="middle" font-size="64" font-family="sans-serif" font-weight="800" fill="#fff" opacity=".85">A B C</text>
+    <rect x="760" y="500" width="320" height="24" rx="8" fill="#F29E4C"/><rect x="780" y="524" width="16" height="70" fill="#D9853A"/><rect x="1044" y="524" width="16" height="70" fill="#D9853A"/>
+    <rect x="700" y="520" width="60" height="14" rx="5" fill="#4CC373"/><rect x="706" y="534" width="10" height="56" fill="#3BA862"/><rect x="744" y="534" width="10" height="56" fill="#3BA862"/><rect x="740" y="460" width="14" height="70" rx="5" fill="#4CC373"/>
+    <rect x="1080" y="520" width="60" height="14" rx="5" fill="#5B8DEF"/><rect x="1086" y="534" width="10" height="56" fill="#3E6FD0"/><rect x="1124" y="534" width="10" height="56" fill="#3E6FD0"/><rect x="1086" y="460" width="14" height="70" rx="5" fill="#5B8DEF"/>
+    <circle cx="860" cy="488" r="14" fill="#FF7A9A"/><rect x="930" y="470" width="40" height="30" rx="5" fill="#FFC93C"/>
+  </svg>`,
+  outside: `<svg class="scene" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMax slice">
+    <path d="M0 560 Q300 480 640 540 Q930 590 1200 520 V800 H0 Z" fill="#9BD67F"/><path d="M0 640 Q400 580 760 630 Q1000 660 1200 610 V800 H0 Z" fill="#7FC765"/>
+    <ellipse cx="620" cy="700" rx="150" ry="40" fill="#F4DDA8"/><ellipse cx="620" cy="692" rx="128" ry="28" fill="#F8E6BC"/>
+    <path d="M840 600 L880 330 H920 L960 600" stroke="#E8505B" stroke-width="12" fill="none"/><path d="M880 330 V300 M920 330 V300" stroke="#E8505B" stroke-width="10"/>
+    <rect x="860" y="300" width="80" height="16" rx="6" fill="#FFC93C"/><path d="M930 316 Q1060 400 1100 590" stroke="#5B8DEF" stroke-width="26" fill="none" stroke-linecap="round"/>
+    <path d="M120 600 L170 330 H330 L380 600" stroke="#8B6B4A" stroke-width="14" fill="none"/><path d="M200 335 V500 M280 335 V500" stroke="#5A4632" stroke-width="4"/>
+    <rect x="186" y="498" width="28" height="10" rx="4" fill="#FF7A9A"/><rect x="266" y="498" width="28" height="10" rx="4" fill="#4CC373"/>
+  </svg>`,
+  holidays: `<svg class="scene" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMax slice">
+    <rect y="430" width="1200" height="160" fill="#4FB3E8"/><path d="M0 440 Q60 425 120 440 T240 440 T360 440 T480 440 T600 440 T720 440 T840 440 T960 440 T1080 440 T1200 440" stroke="#fff" stroke-width="6" fill="none" opacity=".7"/>
+    <path d="M0 560 Q600 500 1200 560 V800 H0 Z" fill="#F4DDA8"/>
+    <path d="M160 640 L190 420" stroke="#8B6B4A" stroke-width="10"/><path d="M60 440 Q190 330 320 440 Q255 410 190 440 Q125 410 60 440 Z" fill="#FF7A59"/><path d="M125 410 Q190 330 255 410" stroke="#FFE066" stroke-width="10" fill="none"/>
+    <path d="M1030 650 Q1020 520 1060 380" stroke="#A0703C" stroke-width="22" fill="none"/>
+    <path d="M1060 380 q-90 -20 -140 40 M1060 380 q-60 -70 -150 -50 M1060 380 q40 -80 130 -60 M1060 380 q90 0 120 70" stroke="#4CC373" stroke-width="26" fill="none" stroke-linecap="round"/>
+    <circle cx="420" cy="700" r="16" fill="#FF9AA8"/><path d="M700 690 q20 -30 40 0 Z" fill="#FFC93C"/>
+  </svg>`
+};
+const curWorld = () => WORLDS.find(w => w.id === S.world) || WORLDS[1];
+function home(greet, switched) {
+  const W = curWorld();
+  const my = show(`<div class="world-bg w-${W.id}">${SCENES[W.id] || ''}</div>
     <button class="gear" id="gear" aria-label="Parent settings">⚙️<span class="ring"></span></button>
-    <div class="menu">${TILES.map(t => `<button class="tile ${t.id === 'friends' ? 'wiggle' : ''}" data-t="${t.id}" style="--s:${t.s}">
+    <div class="worlds">${WORLDS.map(w => `<button class="wbtn ${w.id === W.id ? 'on' : ''}" data-w="${w.id}"><span>${w.e}</span><b>${w.pl}</b></button>`).join('')}</div>
+    <div class="menu world-menu">${W.tiles.map(id => TILES.find(t => t.id === id)).map(t => `<button class="tile ${t.id === 'friends' ? 'wiggle' : ''}" data-t="${t.id}" style="--s:${t.s}">
       <span class="e">${t.e}</span><span class="l">${t.pl}</span></button>`).join('')}</div>
     ${charHTML('fifi', 'left')}${charHTML('pip', 'right')}`);
   $$('.char').forEach(c => c.style.width = '26vmin');
   $$('.tile').forEach(b => b.onclick = () => openTile(b.dataset.t, b));
+  $$('.wbtn').forEach(b => b.onclick = () => {           // switch place: new scene, new tiles
+    unlockAudio(); if (b.dataset.w === W.id) return;
+    S.world = b.dataset.w; save(); home(false, true);
+  });
   parentGate($('#gear'));
   waveAll();
   M.play('menu', .32);                           // gentle music while she chooses
   if (greet) seq([['fifi', 'en', `Yay! Hello, ${KID.en}!`], ['pip', 'pl', `Hura! Cześć, ${KID.plCall}!`],
     ['fifi', 'en', 'Ooh! What shall we play?'], ['pip', 'pl', 'W co się bawimy?']], my);
+  else if (switched) seq([['pip', 'pl', W.pl + '!'], ...(S.plOnly ? [] : [['fifi', 'en', W.en + '!']]), ['pip', 'pl', 'W co się bawimy?']], my);
   else seq([['pip', 'pl', 'W co się bawimy?']], my);
 }
 let opening = false;
@@ -547,7 +611,8 @@ async function openTile(id, el) {
   hush(); const my = tk; M.stop(1.2);
   el.style.transform = 'scale(1.12)';
   const go = { colours: () => pickGame('colours'), animals: () => pickGame('animals'), count: countGame,
-    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), dress: () => seasonMenu(), songs: songsMenu, stickers: stickerBook }[id];
+    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), dress: () => seasonMenu(), songs: songsMenu, stickers: stickerBook }[id]
+    || (window.TOPICS[id] && (() => phraseGame(window.TOPICS[id])));
   await Promise.race([seq([['fifi', 'en', 'Yay! ' + t.en + '!'], ['pip', 'pl', 'Hura! ' + t.pl + '!']], my), wait(3200)]);
   opening = false;
   if (my === tk) go();
