@@ -369,6 +369,7 @@ const TILES = [
   { id: 'count',   e: '🍎', en: 'Counting', pl: 'Liczymy', s: '#F5C9B8' },
   { id: 'friends', e: '🧸', en: 'Playing with friends', pl: 'Zabawa z dziećmi', s: '#CDE5F7' },
   { id: 'needs',   e: '🥤', en: 'At nursery', pl: 'W przedszkolu', s: '#D3EFC9' },
+  { id: 'dress',   e: '🧥', en: 'Getting dressed', pl: 'Ubieramy się', s: '#E4D4F4' },
   { id: 'stickers',e: '⭐', en: 'Stickers', pl: 'Naklejki', s: '#F7E6A6' }
 ];
 function home(greet) {
@@ -393,7 +394,7 @@ async function openTile(id, el) {
   hush(); const my = tk; M.stop(1.2);
   el.style.transform = 'scale(1.12)';
   const go = { colours: () => pickGame('colours'), animals: () => pickGame('animals'), count: countGame,
-    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), stickers: stickerBook }[id];
+    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), dress: () => dressGame(), stickers: stickerBook }[id];
   await Promise.race([seq([['fifi', 'en', 'Yay! ' + t.en + '!'], ['pip', 'pl', 'Hura! ' + t.pl + '!']], my), wait(3200)]);
   opening = false;
   if (my === tk) go();
@@ -481,6 +482,168 @@ function countGame() {
     });
   };
   next();
+}
+
+
+/* ---------- getting dressed: nursery cloakroom, toy box with clothes ---------- */
+const ROOM = `<div class="room" id="room"><div class="wall"></div>
+  <svg class="lockers" viewBox="0 0 300 222">
+    <rect x="0" y="0" width="300" height="180" rx="8" fill="#E8C9A0"/>
+    ${['#BFE3F5', '#FFD6E0', '#D7F0C8', '#FFE9A8'].map((c, i) => { const x = 10 + i * 72; return `
+      <rect x="${x}" y="10" width="64" height="160" rx="5" fill="${c}"/>
+      <rect x="${x}" y="10" width="64" height="12" fill="#000" opacity=".06"/>
+      <circle cx="${x + 32}" cy="38" r="5" fill="#9A8A80"/><path d="M${x + 32} 38 v8 q0 5 6 5" stroke="#9A8A80" stroke-width="3" fill="none"/>
+      <circle cx="${x + 32}" cy="150" r="11" fill="#fff"/>`; }).join('')}
+    <path d="M42 144 l2.6 5.3 5.8 .8 -4.2 4.1 1 5.8 -5.2 -2.7 -5.2 2.7 1 -5.8 -4.2 -4.1 5.8 -.8 Z" fill="#FFC93C"/>
+    <path d="M114 156 c-8 -6 -9 -12 -4 -14 c3 -1 4 1 4 3 c0 -2 1 -4 4 -3 c5 2 4 8 -4 14 Z" fill="#FF6B8A"/>
+    <circle cx="186" cy="150" r="5" fill="#FFB020"/><path d="M186 140 v4 M186 156 v4 M176 150 h4 M192 150 h4" stroke="#FFB020" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="258" cy="150" r="3" fill="#FFC93C"/>${[0, 72, 144, 216, 288].map(a => `<circle cx="${258 + 5.5 * Math.cos(a * Math.PI / 180)}" cy="${150 + 5.5 * Math.sin(a * Math.PI / 180)}" r="3.4" fill="#C77DFF"/>`).join('')}
+    <path d="M240 50 q18 -8 36 0 l4 52 q-22 6 -44 0 Z" fill="#7FBF6A"/><path d="M240 54 l-6 34 M276 54 l6 34" stroke="#7FBF6A" stroke-width="9" stroke-linecap="round"/>
+    <path d="M90 118 h18 v14 h-22 q-3 -8 4 -8 Z M114 118 h18 v14 h-18 Z" fill="#5B8DEF"/>
+    <rect x="-6" y="182" width="312" height="14" rx="5" fill="#C99A6A"/>
+    <rect x="14" y="196" width="10" height="26" fill="#B5875A"/><rect x="276" y="196" width="10" height="26" fill="#B5875A"/>
+  </svg><div class="floor"></div></div>`;
+function snow(sec = 5) {
+  for (let i = 0; i < 45; i++) setTimeout(() => {
+    const f = document.createElement('div'); f.className = 'flake'; f.textContent = Math.random() < .5 ? '❄' : '•';
+    f.style.left = Math.random() * 100 + 'vw'; f.style.fontSize = (2 + Math.random() * 3) + 'vmin';
+    f.style.animationDuration = (3 + Math.random() * 3) + 's';
+    document.body.appendChild(f); setTimeout(() => f.remove(), 6500);
+  }, Math.random() * sec * 1000);
+}
+function dressGame(mode) {
+  const C = window.CLOTHES, A = window.DRESS_ART, byId = id => C.find(c => c.id === id);
+  mode = mode || (S.dressNext === 'off' ? 'off' : 'on');        // alternates: get dressed → next time take off
+  S.dressNext = mode === 'on' ? 'off' : 'on'; save();
+  const dressing = mode === 'on';
+  const order = dressing ? C.map(c => c.id) : ['czapka', 'rekawiczki', 'szalik', 'kurtka', 'buty', 'spodnie'];
+  const worn = new Set(dressing ? [] : order);
+  let step = 0, busy = true, hintT = 0;
+  const my = show(`${ROOM}${topbar(order.length, 0)}
+    <div class="kid" id="kid">${A.kid([...worn])}</div>
+    <div class="toybox"><div class="tb-back"></div><div class="tb-items">${shuffle(C.map(c => c.id)).map(id =>
+      `<div class="item ${worn.has(id) ? 'gone' : ''}" data-id="${id}" style="--r:${(Math.random() * 16 - 8).toFixed(1)}deg">${A.item(id)}</div>`).join('')}</div>
+      <div class="tb-front"></div></div>${chars()}`);
+  bindHome();
+  const kid = $('#kid'), alive = () => $('#kid') === kid;
+  const target = () => byId(order[step]);
+  const jest = c => c.plural ? 'są' : 'jest';
+  const where = c => `Gdzie ${jest(c)} ${c.pl}?`;
+  const ask = c => {
+    const bi = step < 3;
+    if (dressing) return bi ? [['fifi', 'en', `${c.plural ? 'Where are' : "Where's"} the ${c.en}? Put on the ${c.en}!`], ['pip', 'pl', `${cap(c.pl)}! Załóż ${c.acc}!`]]
+      : [['pip', 'pl', `${where(c)} Załóż ${c.acc}!`]];
+    return bi ? [['fifi', 'en', `Take off the ${c.en}!`], ['pip', 'pl', `Zdejmij ${c.acc}!`]] : [['pip', 'pl', `Zdejmij ${c.acc}!`]];
+  };
+  const hintLater = () => {                       // after a while, the right one glows
+    clearTimeout(hintT);
+    hintT = setTimeout(() => {
+      if (!alive() || busy) return;
+      const id = target().id;
+      if (dressing) { const el = $(`.item[data-id="${id}"]`); el && el.classList.add('hint'); }
+      else { const g = $(`.cl[data-cl="${id}"]`, kid); g && g.classList.add('hint'); }
+    }, 9000);
+  };
+  const clearHint = () => { clearTimeout(hintT); $$('.hint').forEach(x => x.classList.remove('hint')); };
+  const prompt = async () => { busy = false; hintLater(); await seq(ask(target())); };
+  $('#again').onclick = () => { hush(); seq(ask(target())); };
+
+  const baseRect = el => { const t = el.style.transform; el.style.transition = 'none'; el.style.transform = 'none'; const r = el.getBoundingClientRect(); el.style.transform = t; return r; };
+  const toLayer = (el, id) => {                   // transform that puts the box item exactly over its place on the child
+    const L = $(`.cl[data-cl="${id}"]`, kid).getBoundingClientRect(), B = baseRect(el);
+    const sc = Math.min(L.width / B.width, L.height / B.height) || 1;
+    return `translate(${L.left + L.width / 2 - (B.left + B.width / 2)}px, ${L.top + L.height / 2 - (B.top + B.height / 2)}px) scale(${sc})`;
+  };
+  const backToBox = el => { el.style.transition = ''; el.style.transform = ''; };
+
+  const done = async () => {
+    busy = true; clearHint(); hush(); const t = tk;
+    kid.classList.add('happy'); cheer();
+    if (dressing) {
+      if (!await seq([['fifi', 'en', `Yay! All dressed, ${KID.en}! Let's go outside!`], ['pip', 'pl', 'Hura! Idziemy na dwór!']], t)) return;
+      $('#room').classList.add('out'); $('.toybox').classList.add('out');
+      kid.classList.add('hop'); snow(5); confettiSmall();
+      if (!await seq([['pip', 'pl', 'Śnieg! Hura!'], ['fifi', 'en', 'Wheee! Snow!']], t)) return;
+      await wait(2200); if (t !== tk) return;
+      reward(() => dressGame());
+    } else {
+      if (!await seq([['pip', 'pl', `Brawo, ${KID.plCall}! Gotowe!`], ['fifi', 'en', 'All done! Well done!']], t)) return;
+      reward(() => dressGame());
+    }
+  };
+  const success = async () => {
+    const c = target(); step++; clearHint(); hush(); const t = tk;
+    const dots = $$('.dots i'); if (dots[step - 1]) dots[step - 1].classList.add('on');
+    cheer('pip');
+    const lines = [['pip', 'pl', `${cap(c.pl)}! ${praisePL()}`]];
+    if (step <= 3) lines.push(['fifi', 'en', praiseEN()]);
+    if (!await seq(lines, t)) return;
+    if (step >= order.length) return done();
+    prompt();
+  };
+  const wrong = async o => {
+    const c = target(); hush(); const t = tk;
+    const lines = dressing ? [['pip', 'pl', `To ${jest(o)} ${o.pl}. ${where(c)}`]] : [['pip', 'pl', `To ${jest(o)} ${o.pl}. Zdejmij ${c.acc}!`]];
+    if (step < 3) lines.unshift(['fifi', 'en', `That's the ${o.en}!`]);
+    await seq(lines, t);
+  };
+
+  /* putting on: drag a piece from the box onto the child — or just tap it */
+  const put = (el, id) => {
+    busy = true;
+    el.classList.remove('drag'); el.style.transition = 'transform .45s cubic-bezier(.4,.1,.3,1)';
+    requestAnimationFrame(() => { el.style.transform = toLayer(el, id); });
+    setTimeout(() => {
+      el.classList.add('gone'); el.style.transition = 'none'; el.style.transform = '';
+      const g = $(`.cl[data-cl="${id}"]`, kid); g.classList.add('on', 'pop'); setTimeout(() => g.classList.remove('pop'), 500);
+      worn.add(id); success();
+    }, 470);
+  };
+  $$('.item').forEach(el => el.addEventListener('pointerdown', e => {
+    if (!dressing || busy || el.classList.contains('gone')) return;
+    e.preventDefault(); unlockAudio();
+    try { el.setPointerCapture(e.pointerId); } catch (x) {}
+    const sx = e.clientX, sy = e.clientY; let moved = false;
+    el.classList.add('drag'); el.style.transition = 'none';
+    const mv = ev => { const dx = ev.clientX - sx, dy = ev.clientY - sy; if (Math.hypot(dx, dy) > 12) moved = true; el.style.transform = `translate(${dx}px, ${dy}px) scale(1.15)`; };
+    const up = ev => {
+      el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up);
+      if (busy) return backToBox(el);
+      const K = kid.getBoundingClientRect(), pad = 30;
+      const onKid = ev.clientX > K.left - pad && ev.clientX < K.right + pad && ev.clientY > K.top - pad && ev.clientY < K.bottom + pad;
+      const id = el.dataset.id;
+      if (moved && !onKid) { el.classList.remove('drag'); return backToBox(el); }   // dropped somewhere else: just goes back
+      if (id === target().id) return put(el, id);
+      el.classList.remove('drag'); backToBox(el);
+      el.classList.remove('no'); void el.offsetWidth; el.classList.add('no');
+      wrong(byId(id));
+    };
+    el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+  }));
+
+  /* taking off: tap the piece on the child → it flies back into the box */
+  kid.addEventListener('click', e => {
+    if (dressing || busy) return;
+    const g = e.target.closest('.cl.on'); if (!g) return;
+    unlockAudio();
+    const id = g.dataset.cl;
+    if (id !== target().id) { g.classList.remove('nope'); void g.getBBox(); g.classList.add('nope'); return wrong(byId(id)); }
+    busy = true;
+    const el = $(`.item[data-id="${id}"]`);
+    el.style.transition = 'none'; el.style.transform = toLayer(el, id); el.classList.remove('gone');
+    g.classList.remove('on'); worn.delete(id);
+    requestAnimationFrame(() => requestAnimationFrame(() => { el.style.transition = 'transform .5s cubic-bezier(.3,1.3,.5,1)'; el.style.transform = ''; }));
+    setTimeout(success, 450);
+  });
+
+  (async () => {
+    await wait(200); if (!alive()) return;
+    const intro = dressing
+      ? [['fifi', 'en', `Ooh! Let's get dressed to play outside, ${KID.en}!`], ['pip', 'pl', 'Ubieramy się na dwór!']]
+      : [['fifi', 'en', `Brrr! We're back inside, ${KID.en}! Let's take our clothes off!`], ['pip', 'pl', 'Wracamy! Rozbieramy się!']];
+    if (!await seq(intro, my)) return;
+    prompt();
+  })();
 }
 
 /* ---------- say it: playing with friends & nursery words ---------- */

@@ -64,3 +64,14 @@ window.NEEDS = [
 ];
 
 window.STICKERS = ["🦄","🌈","🐞","🦋","🌻","🍓","🐳","🚀","🐥","🦔","🦊","🍭","🌟","🐰","🐼","🐢","🍩","🧁","🐬","🌸","🎀","🐙","🦕","🐝"];
+
+/* Getting dressed (dress-up game). acc = form after "Załóż / Zdejmij" ("Załóż czapkę!").
+   plural: true → "Gdzie są …?", "To są …". Order = how kids dress at nursery. */
+window.CLOTHES = [
+  { id: "spodnie",    en: "trousers", pl: "spodnie",    acc: "spodnie",    plural: true },
+  { id: "kurtka",     en: "jacket",   pl: "kurtka",     acc: "kurtkę",     plural: false },
+  { id: "buty",       en: "boots",    pl: "buty",       acc: "buty",       plural: true },
+  { id: "szalik",     en: "scarf",    pl: "szalik",     acc: "szalik",     plural: false },
+  { id: "czapka",     en: "hat",      pl: "czapka",     acc: "czapkę",     plural: false },
+  { id: "rekawiczki", en: "gloves",   pl: "rękawiczki", acc: "rękawiczki", plural: true }
+];

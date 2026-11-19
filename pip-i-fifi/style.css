@@ -204,3 +204,53 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   .greet.front .gwrap { bottom: 2vh; }
 }
 .big-play.asking { opacity: .45; animation: none; }   /* while the iPad asks for the microphone */
+
+/* ============ Getting dressed: nursery cloakroom + toy box ============ */
+.room { position: absolute; inset: 0; z-index: 0; transition: opacity 1.2s ease; }
+.room.out { opacity: 0; }
+.room .wall { position: absolute; inset: 0; background: linear-gradient(#FFF6E3 0 62%, #F6DDB8 62% 64%, #FCEBD0 64%); }
+.room .floor { position: absolute; left: 0; right: 0; bottom: 0; height: 16vh; border-top: .8vmin solid #C9A57A;
+  background: repeating-linear-gradient(90deg, #E3C69E 0 12vmin, #D6B486 12vmin 12.4vmin); }
+.lockers { position: absolute; left: 3vw; bottom: 14vh; height: 50vh; width: 67.6vh; }
+.kid { position: absolute; left: 17vw; bottom: 5vh; height: 70vh; width: 43.75vh; z-index: 3; }
+.kid svg { height: 100%; width: 100%; display: block; overflow: visible; }
+.kid .cl { opacity: 0; transition: opacity .2s; transform-box: fill-box; transform-origin: center; }
+.kid .cl.on { opacity: 1; }
+.kid .cl:not(.on) { pointer-events: none; }
+.kid .cl.pop { animation: clPop .45s cubic-bezier(.3,1.6,.5,1); }
+@keyframes clPop { from { transform: scale(1.25); } to { transform: scale(1); } }
+.kid .cl.nope { animation: clNope .45s ease; }
+@keyframes clNope { 25%, 75% { transform: translateX(-3px); } 50% { transform: translateX(3px); } }
+.kid .cl.hint { animation: clHint 1s ease-in-out infinite; }
+@keyframes clHint { 50% { transform: scale(1.08); filter: brightness(1.15); } }
+.kid-mouth-open { display: none; }
+.kid.happy .kid-mouth { display: none; }
+.kid.happy .kid-mouth-open { display: inline; }
+.kid.hop { animation: kidHop .55s ease-in-out infinite; }
+@keyframes kidHop { 50% { transform: translateY(-4vh); } }
+.toybox { position: absolute; right: 14vw; bottom: 6vh; width: 52vmin; height: 48vmin; z-index: 4; transition: opacity .8s, transform .8s; }
+.toybox.out { opacity: 0; transform: translateY(10vh); pointer-events: none; }
+.tb-back { position: absolute; left: 0; right: 0; bottom: 0; height: 66%; background: #C98B55; border-radius: 2vmin 2vmin 1vmin 1vmin; box-shadow: inset 0 2vmin 0 #A86E3E; }
+.tb-items { position: absolute; left: 2vmin; right: 2vmin; top: 0; bottom: 11vmin; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr);
+  align-items: end; justify-items: center; z-index: 1; }
+.item { width: 14.5vmin; transform: rotate(var(--r)); touch-action: none; cursor: grab; position: relative;
+  filter: drop-shadow(0 .6vmin .5vmin rgba(0,0,0,.2)); transition: transform .35s cubic-bezier(.3,1.4,.5,1); }
+.item svg { width: 100%; height: auto; display: block; }
+.item.drag { z-index: 5; }
+.item.gone { visibility: hidden; }
+.item.no { animation: no .5s ease; }
+.item.hint { animation: itemHint 1s ease-in-out infinite; }
+@keyframes itemHint { 50% { transform: rotate(var(--r)) scale(1.18); filter: drop-shadow(0 0 2vmin #FFE066); } }
+.tb-front { position: absolute; left: -1vmin; right: -1vmin; bottom: 0; height: 28%; z-index: 2; pointer-events: none;
+  background: #E0A066; border-radius: 1.5vmin; box-shadow: 0 1vmin 0 #B9804B, inset 0 -1vmin 0 rgba(0,0,0,.08); }
+.tb-front::after { content: '★ ★ ★'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #FFE7C2; font-size: 4vmin; letter-spacing: 2vmin; }
+.flake { position: fixed; top: -5vh; color: #fff; z-index: 20; pointer-events: none; text-shadow: 0 0 .5vmin rgba(120,160,200,.6); animation: fall linear forwards; }
+@keyframes fall { to { transform: translate(4vw, 110vh) rotate(200deg); } }
+.menu { max-width: 100vmin; }
+@media (orientation: portrait) {
+  .menu { max-width: 80vmin; }
+  .kid { left: 4vw; bottom: 26vh; height: 46vh; width: 28.75vh; }
+  .toybox { right: 2vw; bottom: 27vh; width: 48vmin; height: 46vmin; }
+  .lockers { left: 2vw; bottom: 33vh; height: 32vh; width: 43.2vh; }
+  .room .floor { height: 32vh; }
+}
