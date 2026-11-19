@@ -565,10 +565,10 @@ function dressGame(mode) {
       kid.classList.add('hop'); snow(5); confettiSmall();
       if (!await seq([['pip', 'pl', 'Śnieg! Hura!'], ['fifi', 'en', 'Wheee! Snow!']], t)) return;
       await wait(2200); if (t !== tk) return;
-      reward(() => dressGame());
+      sayClothes(order, true);
     } else {
       if (!await seq([['pip', 'pl', `Brawo, ${KID.plCall}! Gotowe!`], ['fifi', 'en', 'All done! Well done!']], t)) return;
-      reward(() => dressGame());
+      sayClothes(order, false);
     }
   };
   const success = async () => {
@@ -646,17 +646,30 @@ function dressGame(mode) {
   })();
 }
 
+/* after dressing / undressing: practise saying the clothes words */
+function sayClothes(order, dressed) {
+  const list = order.map(id => {
+    const c = window.CLOTHES.find(x => x.id === id);
+    return { pl: cap(c.pl) + '!', en: cap(c.en), art: window.DRESS_ART.item(id),
+      why: c.plural ? `These are the ${c.en}! In Polish:` : `This is the ${c.en}! In Polish:` };
+  });
+  phraseGame(list, {
+    intro: [['fifi', 'en', `Now let's say the words, ${KID.en}!`], ['pip', 'pl', 'Teraz mówimy!']],
+    done: () => reward(() => dressGame())
+  });
+}
+
 /* ---------- say it: playing with friends & nursery words ---------- */
 let saidYourTurn = false; // "Your turn!" is spoken only once per visit — after that a visual cue
-function phraseGame(list) {
+function phraseGame(list, opts = {}) {
   let i = 0, card = 0;
   saidYourTurn = false;
-  const again = () => phraseGame(list);
+  const again = () => phraseGame(list, opts);
   const next = async () => {
-    if (i >= list.length) return reward(again);
+    if (i >= list.length) return opts.done ? opts.done() : reward(again);
     const p = list[i]; const c = ++card;
     show(`${topbar(list.length, i)}
-      <div class="phrase" id="ph"><button class="pic" id="pic">${p.emoji}</button>
+      <div class="phrase" id="ph"><button class="pic ${p.art ? 'art' : ''}" id="pic">${p.art || p.emoji}</button>
         <div class="pl">${kidify(p.pl, 'pl')}</div><div class="en">${kidify(p.en, 'en')}</div>
         <div class="your-turn" id="yt"></div></div>${chars()}`, true);
     bindHome();
@@ -675,7 +688,7 @@ function phraseGame(list) {
         if (!alive() || busy || praised) return;
         if (!nudged) {
           nudged = true; busy = true;
-          await seq([['fifi', 'en', 'Let\'s say it together!'], ['pip', 'pl', p.pl]]);
+          await seq(S.plOnly ? [['pip', 'pl', `Powiedz: ${p.pl}`]] : [['fifi', 'en', 'Let\'s say it together!'], ['pip', 'pl', p.pl]]);
           busy = false; armNudge();
         } else showNext();
       }, 6500);
@@ -694,8 +707,9 @@ function phraseGame(list) {
     }
     async function intro() {
       busy = true; yt.textContent = '';
-      const lines = [['fifi', 'en', p.why], ['pip', 'pl', p.pl]];
-      if (!saidYourTurn) { saidYourTurn = true; lines.push(['fifi', 'en', `Ooh! Your turn, ${KID.en}! Say it!`]); }
+      const lines = S.plOnly ? [['pip', 'pl', p.pl]] : [['fifi', 'en', p.why], ['pip', 'pl', p.pl]];
+      if (card === 1 && opts.intro) lines.unshift(...opts.intro.filter(l => !S.plOnly || l[0] === 'pip'));
+      if (!saidYourTurn) { saidYourTurn = true; lines.push(S.plOnly ? ['pip', 'pl', `Twoja kolej, ${KID.plCall}! Powiedz!`] : ['fifi', 'en', `Ooh! Your turn, ${KID.en}! Say it!`]); }
       await seq(lines);
       busy = false;
       if (!alive()) return;

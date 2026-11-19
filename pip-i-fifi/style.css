@@ -254,3 +254,5 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   .lockers { left: 2vw; bottom: 33vh; height: 32vh; width: 43.2vh; }
   .room .floor { height: 32vh; }
 }
+.phrase .pic.art { padding: 5vmin; }
+.phrase .pic.art svg { width: 100%; height: 100%; }
