@@ -300,7 +300,7 @@ function start() {
      to call mode, which cuts off anything playing — so it must happen before the welcome starts. */
   if (S.listen) {
     const go = $('#go'); go.classList.add('asking');
-    Mic.open().finally(() => go.classList.remove('asking'));
+    Mic.open().finally(() => { Recog.warmup(); setTimeout(() => go.classList.remove('asking'), Recog.usable() ? 1300 : 0); });
   }
   $('#go').onclick = () => { unlockAudio(); playSilence(); Mic.open(); pickVoices(); M.play('walk', .55); greet(); primeSpeech(); };
 }
@@ -337,8 +337,17 @@ function primeSpeech() {
    then the game quietly keeps the old "any voice counts" behaviour. */
 const Recog = {
   api: window.SpeechRecognition || window.webkitSpeechRecognition || null,
-  broken: false, cur: null,
+  broken: false, cur: null, fails: 0, info: 'not used yet',
   usable() { return !!this.api && !this.broken && S.checkWords !== false; },
+  failed(why) {                                  // she spoke (mic heard it) but dictation gave no words
+    this.fails++; this.info = why;
+    if (this.fails >= 2) { this.broken = true; this.info = 'switched off: ' + why; }
+  },
+  warmup() {                                     // start screen: get the dictation permission question out of the way
+    if (!this.usable()) return;
+    try { const r = new this.api(); r.lang = 'pl-PL'; r.onerror = e => { this.info = 'start: ' + e.error; }; r.onend = () => {};
+      r.start(); setTimeout(() => { try { r.abort(); } catch (e) {} }, 1200); } catch (e) { this.info = 'start failed: ' + e.message; }
+  },
   listen(lang, ms = 7000) {                      // → { heard: [...] }   or null = can't be used here
     if (!this.usable()) return Promise.resolve(null);
     return new Promise(res => {
@@ -347,8 +356,8 @@ const Recog = {
       const heard = []; let done = false, t = 0;
       const fin = v => { if (done) return; done = true; clearTimeout(t); if (this.cur === r) this.cur = null; try { r.abort(); } catch (e) {} res(v); };
       t = setTimeout(() => fin({ heard }), ms);
-      r.onresult = e => { for (const rs of e.results) for (const a of rs) if (a.transcript) heard.push(a.transcript); fin({ heard }); };
-      r.onerror = e => { if (/not-allowed|service-not-allowed|audio-capture|language-not-supported/.test(e.error)) { this.broken = true; fin(null); } else fin({ heard }); };
+      r.onresult = e => { for (const rs of e.results) for (const a of rs) if (a.transcript) heard.push(a.transcript); this.info = 'heard: ' + heard.slice(0, 3).join(' / '); fin({ heard }); };
+      r.onerror = e => { this.info = 'error: ' + e.error; if (/not-allowed|service-not-allowed|audio-capture|language-not-supported/.test(e.error)) { this.broken = true; fin(null); } else fin({ heard }); };
       r.onend = () => fin({ heard });
       try { this.cur = r; r.start(); } catch (e) { this.broken = true; fin(null); }
     });
@@ -444,7 +453,8 @@ async function greet() {
   const micOn = await Mic.open();
   if (!alive()) return;
   let wordPhase = false;                          // while dictation listens, plain 'voice heard' doesn't answer
-  if (micOn) Mic.watch(() => !wordPhase && answer && answer('voice'), (lv, active) => G.style.setProperty('--lv', (1 + Math.min(0.35, (active ? lv : 0) * 7)).toFixed(3)));
+  let spokeInWordPhase = false;
+  if (micOn) Mic.watch(() => { if (wordPhase) { spokeInWordPhase = true; return; } answer && answer('voice'); }, (lv, active) => G.style.setProperty('--lv', (1 + Math.min(0.35, (active ? lv : 0) * 7)).toFixed(3)));
 
   /* 3. chat: how was nursery? (skipped on a quick return) */
   if (!back) {
@@ -469,12 +479,13 @@ async function greet() {
   /* listen: a tap on Tak!, her voice — and, where the iPad can, WHAT she says (Tak / Nie) */
   const ask = async ms => {
     if (!Recog.usable()) return listen(ms);
-    wordPhase = true;
+    wordPhase = true; spokeInWordPhase = false;
     const waiting = listen(ms);
     Recog.listen('pl-PL', ms).then(rr => {
       if (!answer) return;
       if (rr === null) { wordPhase = false; return; }          // dictation not available → back to "any voice"
-      if (rr.heard.length) answer(yesNo(rr.heard));
+      if (rr.heard.length) return answer(yesNo(rr.heard));
+      if (spokeInWordPhase) { Recog.failed('no words while she spoke'); answer('voice'); }   // don't leave her hanging
     });
     const got = await waiting; wordPhase = false; Recog.stop(); return got;
   };
@@ -835,8 +846,10 @@ function phraseGame(list, opts = {}) {
         } else showNext();
       }, 6500);
     };
+    let spoke = false;
     async function onVoice(checked) {
-      if (!alive() || busy || (useWords && checked !== true)) return;   // with dictation, only a matching word counts
+      if (useWords && checked !== true) { spoke = true; return; }          // with dictation, only a matching word counts
+      if (!alive() || busy) return;
       busy = true; praised++; lastVoice = performance.now(); clearTimeout(nudgeTimer);
       cheer(); confettiBurst();
       const lines = praised === 1
@@ -850,11 +863,16 @@ function phraseGame(list, opts = {}) {
     let useWords = false, tries = 0;
     async function checkWords() {             // dictation: did she say (close to) the word?
       while (alive()) {
-        yt.textContent = '🎤'; ph.classList.add('listening');
+        yt.textContent = '🎤'; ph.classList.add('listening'); spoke = false;
         const rr = await Recog.listen('pl-PL', 7000);
         ph.classList.remove('listening');
         if (!alive()) return;
         if (rr === null) { useWords = false; armNudge(); return; }   // not available → old behaviour
+        if (!rr.heard.length && spoke) {      // the mic heard her, dictation gave nothing → accept, like before
+          Recog.failed('no words while she spoke');
+          if (!Recog.usable()) useWords = false;
+          busy = false; await onVoice(true); return;
+        }
         if (!rr.heard.length) {               // she said nothing
           if (!nudged) { nudged = true; busy = true; await seq(S.plOnly ? [['pip', 'pl', `Powiedz: ${p.pl}`]] : [['fifi', 'en', 'Let\'s say it together!'], ['pip', 'pl', p.pl]]); busy = false; continue; }
           showNext(); return;
@@ -963,7 +981,7 @@ function parentPanel() {
       <div style="display:flex;gap:6px"><select id="vp" class="vsel">${voiceOptions('pl')}</select><button class="pbtn" id="tp">▶</button></div></div>
     <div class="row"><div><b>Voices</b><div class="small">recorded Maisie &amp; Zofia: ${REC.have.size} pieces · missing: ${Object.keys(JSON.parse(localStorage.getItem(MISS_KEY) || '{}')).length}</div></div>
       <div class="seg">${segBtn('recVoices', 'true', 'Recorded')}${segBtn('recVoices', 'false', 'iPad')}</div></div>
-    <div class="row"><div><b>Check her words</b><div class="small">${Recog.api ? (Recog.broken ? 'not allowed here (needs Siri &amp; Dictation on)' : 'uses iPad dictation') : 'not available in this app mode – try in Safari'}</div></div>
+    <div class="row"><div><b>Check her words</b><div class="small">${Recog.api ? (Recog.broken ? 'off for now' : 'uses iPad dictation') : 'not available in this app mode – try in Safari'} · last: ${String(Recog.info).replace(/</g, '&lt;')}</div></div>
       <div class="seg">${segBtn('checkWords', 'true', 'On')}${segBtn('checkWords', 'false', 'Off')}</div></div>
     <div class="row"><div><b>Language</b><div class="small">Polish only = test what she knows (just Pip asks)</div></div>
       <div class="seg">${segBtn('plOnly', 'false', 'Both')}${segBtn('plOnly', 'true', 'Polish only')}</div></div>
