@@ -422,8 +422,8 @@ function pickGame(kind) {
     bindHome();
     const bilingual = !S.plOnly;                 // Polish-only = test mode (grown-up panel)
     const prompt = isCol
-      ? (bilingual ? [['fifi', 'en', pick([`Ooh! Find the ${target.en} balloon!`, `Where's the ${target.en} balloon? Let's look!`])], ['pip', 'pl', cap(target.pl) + '!']] : [['pip', 'pl', `Gdzie jest ${target.pl} balonik?`]])
-      : (bilingual ? [['fifi', 'en', pick([`Ooh! Where is the ${target.en}?`, `Can you find the ${target.en}?`])], ['pip', 'pl', cap(target.pl) + '!']] : [['pip', 'pl', `Gdzie jest ${target.pl}?`]]);
+      ? [['pip', 'pl', `Gdzie jest ${target.pl} balonik?`], ...(bilingual ? [['fifi', 'en', pick([`Find the ${target.en} balloon!`, `Where's the ${target.en} balloon?`])]] : [])]
+      : [['pip', 'pl', `Gdzie jest ${target.pl}?`], ...(bilingual ? [['fifi', 'en', pick([`Where is the ${target.en}?`, `Can you find the ${target.en}?`])]] : [])];
     seq(prompt, my);
     $('#again').onclick = () => { hush(); seq(prompt); };
     let solved = false;
@@ -443,8 +443,8 @@ function pickGame(kind) {
         if (t === tk) { await wait(300); if (t === tk) next(); }
       } else {
         b.classList.remove('no'); void b.offsetWidth; b.classList.add('no');
-        await seq([['fifi', 'en', isCol ? `Oops, that's ${o.en}!` : `That's the ${o.en}!`],
-          ['pip', 'pl', `To jest ${o.pl}. Gdzie jest ${target.pl}?`]].filter(l => !S.plOnly || l[0] === 'pip'), t);
+        await seq([['pip', 'pl', `To jest ${o.pl}.`], ['fifi', 'en', isCol ? `Oops, that's ${o.en}!` : `That's the ${o.en}!`],
+          ['pip', 'pl', isCol ? `Gdzie jest ${target.pl} balonik?` : `Gdzie jest ${target.pl}?`]].filter(l => !S.plOnly || l[0] === 'pip'), t);
       }
     });
   };
@@ -531,9 +531,8 @@ function dressGame(mode) {
   const where = c => `Gdzie ${jest(c)} ${c.pl}?`;
   const ask = c => {
     const bi = !S.plOnly;                         // Fifi (English) + Pip (Polish); Polish-only = test mode (grown-up panel)
-    if (dressing) return bi ? [['fifi', 'en', `${c.plural ? 'Where are' : "Where's"} the ${c.en}? Put on the ${c.en}!`], ['pip', 'pl', `${cap(c.pl)}! Załóż ${c.acc}!`]]
-      : [['pip', 'pl', `${where(c)} Załóż ${c.acc}!`]];
-    return bi ? [['fifi', 'en', `Take off the ${c.en}!`], ['pip', 'pl', `Zdejmij ${c.acc}!`]] : [['pip', 'pl', `Zdejmij ${c.acc}!`]];
+    if (dressing) return [['pip', 'pl', `${where(c)} Załóż ${c.acc}!`], ...(bi ? [['fifi', 'en', `Put on the ${c.en}!`]] : [])];
+    return [['pip', 'pl', `Zdejmij ${c.acc}!`], ...(bi ? [['fifi', 'en', `Take off the ${c.en}!`]] : [])];
   };
   const hintLater = () => {                       // after a while, the right one glows
     clearTimeout(hintT);
@@ -583,8 +582,9 @@ function dressGame(mode) {
   };
   const wrong = async o => {
     const c = target(); hush(); const t = tk;
-    const lines = dressing ? [['pip', 'pl', `To ${jest(o)} ${o.pl}. ${where(c)}`]] : [['pip', 'pl', `To ${jest(o)} ${o.pl}. Zdejmij ${c.acc}!`]];
-    if (!S.plOnly) lines.unshift(['fifi', 'en', `That's the ${o.en}!`]);
+    const lines = [['pip', 'pl', `To ${jest(o)} ${o.pl}.`]];
+    if (!S.plOnly) lines.push(['fifi', 'en', `That's the ${o.en}!`]);
+    lines.push(['pip', 'pl', dressing ? where(c) : `Zdejmij ${c.acc}!`]);
     await seq(lines, t);
   };
 
@@ -639,9 +639,9 @@ function dressGame(mode) {
   (async () => {
     await wait(200); if (!alive()) return;
     const intro = dressing
-      ? [['fifi', 'en', `Ooh! Let's get dressed to play outside, ${KID.en}!`], ['pip', 'pl', 'Ubieramy się na dwór!']]
-      : [['fifi', 'en', `Brrr! We're back inside, ${KID.en}! Let's take our clothes off!`], ['pip', 'pl', 'Wracamy! Rozbieramy się!']];
-    if (!await seq(intro, my)) return;
+      ? [['pip', 'pl', `Ubieramy się na dwór, ${KID.plCall}!`], ['fifi', 'en', `Ooh! Let's get dressed to play outside!`]]
+      : [['pip', 'pl', `Brrr! Wracamy! Rozbieramy się, ${KID.plCall}!`], ['fifi', 'en', "We're back inside! Let's take our clothes off!"]];
+    if (!await seq(intro.filter(l => !S.plOnly || l[0] === 'pip'), my)) return;
     prompt();
   })();
 }
@@ -651,10 +651,10 @@ function sayClothes(order, dressed) {
   const list = order.map(id => {
     const c = window.CLOTHES.find(x => x.id === id);
     return { pl: cap(c.pl) + '!', en: cap(c.en), art: window.DRESS_ART.item(id),
-      why: c.plural ? `These are the ${c.en}! In Polish:` : `This is the ${c.en}! In Polish:` };
+      whyEn: c.plural ? `These are the ${c.en}!` : `This is the ${c.en}!` };
   });
   phraseGame(list, {
-    intro: [['fifi', 'en', `Now let's say the words, ${KID.en}!`], ['pip', 'pl', 'Teraz mówimy!']],
+    intro: [['pip', 'pl', `Teraz mówimy, ${KID.plCall}!`], ['fifi', 'en', "Now let's say the words!"]],
     done: () => reward(() => dressGame())
   });
 }
@@ -707,7 +707,7 @@ function phraseGame(list, opts = {}) {
     }
     async function intro() {
       busy = true; yt.textContent = '';
-      const lines = S.plOnly ? [['pip', 'pl', p.pl]] : [['fifi', 'en', p.why], ['pip', 'pl', p.pl]];
+      const lines = S.plOnly ? [['pip', 'pl', p.pl]] : [['pip', 'pl', p.pl], ['fifi', 'en', p.whyEn || `${p.why} ${p.en}`], ['pip', 'pl', p.pl]];
       if (card === 1 && opts.intro) lines.unshift(...opts.intro.filter(l => !S.plOnly || l[0] === 'pip'));
       if (!saidYourTurn) { saidYourTurn = true; lines.push(S.plOnly ? ['pip', 'pl', `Twoja kolej, ${KID.plCall}! Powiedz!`] : ['fifi', 'en', `Ooh! Your turn, ${KID.en}! Say it!`]); }
       await seq(lines);
