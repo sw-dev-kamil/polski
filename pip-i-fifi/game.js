@@ -97,17 +97,18 @@ function prosody(piece, i, n, who, lang) {
    If any piece of a line has no file yet, the whole line uses the iPad voice (no mixing) and the
    missing pieces are noted for the next top-up (grown-up panel). */
 const lineId = (lang, text) => { let h = 0x811c9dc5; const t = lang + '|' + text; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16).padStart(8, '0'); };
-const REC = { have: new Set(), raw: new Map(), buf: new Map(), playing: [], stop: null };
+const REC = { have: new Set(), raw: new Map(), buf: new Map(), playing: [], stop: null, total: 0, done: 0, finished: false };
 const MISS_KEY = 'pipfifi.missing';
 function noteMissing(lang, list) {
   try { const m = JSON.parse(localStorage.getItem(MISS_KEY) || '{}'); list.forEach(t => { m[lineId(lang, t)] = [lang, t]; }); localStorage.setItem(MISS_KEY, JSON.stringify(m)); } catch (e) {}
 }
 async function recPreload() {                // during the start screen: fetch every file (the service worker keeps them offline)
-  try { REC.have = new Set(await (await fetch('audio/index.json', { cache: 'no-cache' })).json()); } catch (e) { return; }
-  const ids = [...REC.have]; let k = 0;
-  const worker = async () => { while (k < ids.length) { const id = ids[k++]; if (REC.raw.has(id)) continue;
-    try { const r = await fetch('audio/' + id + '.mp3'); if (r.ok) REC.raw.set(id, await r.arrayBuffer()); } catch (e) {} } };
+  try { REC.have = new Set(await (await fetch('audio/index.json', { cache: 'no-cache' })).json()); } catch (e) { REC.finished = true; return; }
+  const ids = [...REC.have]; let k = 0; REC.total = ids.length;
+  const worker = async () => { while (k < ids.length) { const id = ids[k++]; if (!REC.raw.has(id)) {
+    try { const r = await fetch('audio/' + id + '.mp3'); if (r.ok) REC.raw.set(id, await r.arrayBuffer()); } catch (e) {} } REC.done++; } };
   await Promise.all([worker(), worker(), worker(), worker()]);
+  REC.finished = true;
 }
 function recBuf(id) {
   if (REC.buf.has(id)) return Promise.resolve(REC.buf.get(id));
@@ -283,6 +284,18 @@ function bindHome() { const h = $('#home'); if (h) h.onclick = () => home(false)
 function start() {
   show(`<div class="start"><div class="title">Pip &amp; Fifi</div>
     <div class="start-row">${charHTML('fifi')}<button class="big-play" id="go" aria-label="Play">${ICON.play}</button>${charHTML('pip')}</div></div>`);
+  /* download bar: voices + music tunes; ▶ stays faded until everything is ready */
+  $('.start').insertAdjacentHTML('beforeend', `<div class="dl" id="dl"><div class="dl-bar"><i id="dlf"></i></div><span id="dlt">Pobieranie…</span></div>`);
+  const dl = $('#dl'), playBtn = $('#go'); playBtn.classList.add('loading');
+  let musicDone = false; Promise.resolve(M.prepare && M.prepare()).then(() => { musicDone = true; });
+  const tick = setInterval(() => {
+    if (!document.body.contains(dl)) return clearInterval(tick);
+    const total = REC.total + 1, done = REC.done + (musicDone ? 1 : 0);
+    const all = REC.finished && musicDone;
+    $('#dlf').style.width = (all ? 100 : Math.round(done / Math.max(1, total) * 100)) + '%';
+    $('#dlt').textContent = all ? '✓ Gotowe!' : `Pobieranie… ${REC.done} / ${REC.total || '…'}`;
+    if (all) { clearInterval(tick); playBtn.classList.remove('loading'); dl.classList.add('ok'); setTimeout(() => dl.classList.add('hide'), 1500); }
+  }, 150);
   /* Ask for the microphone NOW, on the start screen. Saying "Allow" switches the iPhone's sound
      to call mode, which cuts off anything playing — so it must happen before the welcome starts. */
   if (S.listen) {

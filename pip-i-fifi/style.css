@@ -256,3 +256,13 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 }
 .phrase .pic.art { padding: 5vmin; }
 .phrase .pic.art svg { width: 100%; height: 100%; }
+/* download bar on the start screen */
+.dl { position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 4vh); transform: translateX(-50%); width: 60vmin; z-index: 5;
+  display: flex; flex-direction: column; align-items: center; gap: 1.2vmin; transition: opacity .6s; }
+.dl-bar { width: 100%; height: 2.4vmin; border-radius: 99px; background: rgba(255,255,255,.65); overflow: hidden; box-shadow: inset 0 .3vmin .6vmin rgba(0,0,0,.08); }
+.dl-bar i { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, #FFC93C, #FF9A3C); transition: width .2s; }
+.dl span { font-size: 2.8vmin; font-weight: 800; color: #7A6A60; background: rgba(255,255,255,.7); padding: .5vmin 2.4vmin; border-radius: 99px; }
+.dl.ok .dl-bar i { background: #4CC373; }
+.dl.ok span { color: #2F8F52; }
+.dl.hide { opacity: 0; }
+.big-play.loading { opacity: .45; animation: none; }
