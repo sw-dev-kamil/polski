@@ -1,5 +1,5 @@
 /* Offline cache. Bump VERSION when files change. */
-const VERSION = 'pipfifi-v12';
+const VERSION = 'pipfifi-v13';
 const FILES = ['./', './index.html', './style.css', './game.js', './characters.js', './content.js', './music.js', './dressup-art.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 self.addEventListener('install', e => e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting())));

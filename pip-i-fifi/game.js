@@ -9,7 +9,7 @@ const screen = $('#screen');
 
 /* ---------- saved state ---------- */
 const KEY = 'pipfifi.v1';
-let S = { stickers: [], voice: 'cartoon', excite: true, listen: true, sens: 'normal', kid: null, music: true };
+let S = { stickers: [], voice: 'cartoon', excite: true, listen: true, sens: 'normal', kid: null, music: true, plOnly: false };
 try { Object.assign(S, JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
 const KID = Object.assign({}, window.KID, S.kid || {});
@@ -420,7 +420,7 @@ function pickGame(kind) {
         ? `<button class="balloon" data-i="${i}">${balloonHTML(o)}</button>`
         : `<button class="card" data-i="${i}">${o.emoji}</button>`).join('')}</div>${chars()}`);
     bindHome();
-    const bilingual = round < 3;
+    const bilingual = !S.plOnly;                 // Polish-only = test mode (grown-up panel)
     const prompt = isCol
       ? (bilingual ? [['fifi', 'en', pick([`Ooh! Find the ${target.en} balloon!`, `Where's the ${target.en} balloon? Let's look!`])], ['pip', 'pl', cap(target.pl) + '!']] : [['pip', 'pl', `Gdzie jest ${target.pl} balonik?`]])
       : (bilingual ? [['fifi', 'en', pick([`Ooh! Where is the ${target.en}?`, `Can you find the ${target.en}?`])], ['pip', 'pl', cap(target.pl) + '!']] : [['pip', 'pl', `Gdzie jest ${target.pl}?`]]);
@@ -444,7 +444,7 @@ function pickGame(kind) {
       } else {
         b.classList.remove('no'); void b.offsetWidth; b.classList.add('no');
         await seq([['fifi', 'en', isCol ? `Oops, that's ${o.en}!` : `That's the ${o.en}!`],
-          ['pip', 'pl', `To jest ${o.pl}. Gdzie jest ${target.pl}?`]], t);
+          ['pip', 'pl', `To jest ${o.pl}. Gdzie jest ${target.pl}?`]].filter(l => !S.plOnly || l[0] === 'pip'), t);
       }
     });
   };
@@ -530,7 +530,7 @@ function dressGame(mode) {
   const jest = c => c.plural ? 'są' : 'jest';
   const where = c => `Gdzie ${jest(c)} ${c.pl}?`;
   const ask = c => {
-    const bi = true;                              // Fifi (English) + Pip (Polish) every time — Polish only would confuse her
+    const bi = !S.plOnly;                         // Fifi (English) + Pip (Polish); Polish-only = test mode (grown-up panel)
     if (dressing) return bi ? [['fifi', 'en', `${c.plural ? 'Where are' : "Where's"} the ${c.en}? Put on the ${c.en}!`], ['pip', 'pl', `${cap(c.pl)}! Załóż ${c.acc}!`]]
       : [['pip', 'pl', `${where(c)} Załóż ${c.acc}!`]];
     return bi ? [['fifi', 'en', `Take off the ${c.en}!`], ['pip', 'pl', `Zdejmij ${c.acc}!`]] : [['pip', 'pl', `Zdejmij ${c.acc}!`]];
@@ -576,7 +576,7 @@ function dressGame(mode) {
     const dots = $$('.dots i'); if (dots[step - 1]) dots[step - 1].classList.add('on');
     cheer('pip');
     const lines = [['pip', 'pl', `${cap(c.pl)}! ${praisePL()}`]];
-    lines.push(['fifi', 'en', praiseEN()]);
+    if (!S.plOnly) lines.push(['fifi', 'en', praiseEN()]);
     if (!await seq(lines, t)) return;
     if (step >= order.length) return done();
     prompt();
@@ -584,7 +584,7 @@ function dressGame(mode) {
   const wrong = async o => {
     const c = target(); hush(); const t = tk;
     const lines = dressing ? [['pip', 'pl', `To ${jest(o)} ${o.pl}. ${where(c)}`]] : [['pip', 'pl', `To ${jest(o)} ${o.pl}. Zdejmij ${c.acc}!`]];
-    lines.unshift(['fifi', 'en', `That's the ${o.en}!`]);
+    if (!S.plOnly) lines.unshift(['fifi', 'en', `That's the ${o.en}!`]);
     await seq(lines, t);
   };
 
@@ -780,6 +780,8 @@ function parentPanel() {
       <div style="display:flex;gap:6px"><select id="ve" class="vsel">${voiceOptions('en')}</select><button class="pbtn" id="tf">▶</button></div></div>
     <div class="row"><div><b>Pip's voice</b><div class="small">Polish</div></div>
       <div style="display:flex;gap:6px"><select id="vp" class="vsel">${voiceOptions('pl')}</select><button class="pbtn" id="tp">▶</button></div></div>
+    <div class="row"><div><b>Language</b><div class="small">Polish only = test what she knows (just Pip asks)</div></div>
+      <div class="seg">${segBtn('plOnly', 'false', 'Both')}${segBtn('plOnly', 'true', 'Polish only')}</div></div>
     <div class="row"><div><b>Music</b><div class="small">walk-in tune and menu music</div></div>
       <div class="seg">${segBtn('music', 'true', 'On')}${segBtn('music', 'false', 'Off')}</div></div>
     <div class="row"><div><b>Excited voices</b><div class="small">bouncy cheers, rising questions</div></div>
@@ -794,7 +796,7 @@ function parentPanel() {
     <div class="row" style="border:0"><button class="pbtn" id="tv">Test voices</button><button class="pbtn main" id="cl">Done</button></div></div>`;
   document.body.appendChild(el);
   $$('.seg button', el).forEach(b => b.onclick = () => {
-    const k = b.dataset.k; S[k] = (k === 'listen' || k === 'excite' || k === 'music') ? b.dataset.v === 'true' : b.dataset.v; save();
+    const k = b.dataset.k; S[k] = (k === 'listen' || k === 'excite' || k === 'music' || k === 'plOnly') ? b.dataset.v === 'true' : b.dataset.v; save();
     if (k === 'music') { M.on = S.music; if (!S.music) M.stop(.3); }
     $$(`.seg button[data-k="${k}"]`, el).forEach(x => x.classList.toggle('on', x === b));
   });
