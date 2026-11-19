@@ -348,13 +348,16 @@ const Recog = {
     try { const r = new this.api(); r.lang = 'pl-PL'; r.onerror = e => { this.info = 'start: ' + e.error; }; r.onend = () => {};
       r.start(); setTimeout(() => { try { r.abort(); } catch (e) {} }, 1200); } catch (e) { this.info = 'start failed: ' + e.message; }
   },
-  listen(lang, ms = 7000) {                      // → { heard: [...] }   or null = can't be used here
-    if (!this.usable()) return Promise.resolve(null);
+  async listen(lang, ms = 7000) {                // → { heard: [...], sound: bool }   or null = can't be used here
+    if (!this.usable()) return null;
+    /* the game's own microphone must let go, otherwise dictation only gets silence (seen on Kamil's iPad) */
+    if (Mic.stream) { Mic.close(); await wait(300); }
     return new Promise(res => {
       let r; try { r = new this.api(); } catch (e) { this.broken = true; return res(null); }
       r.lang = lang; r.continuous = false; r.interimResults = false; r.maxAlternatives = 5;
-      const heard = []; let done = false, t = 0;
-      const fin = v => { if (done) return; done = true; clearTimeout(t); if (this.cur === r) this.cur = null; try { r.abort(); } catch (e) {} res(v); };
+      const heard = []; let done = false, t = 0, sound = false;
+      r.onsoundstart = r.onspeechstart = () => { sound = true; };
+      const fin = v => { if (done) return; done = true; clearTimeout(t); if (this.cur === r) this.cur = null; try { r.abort(); } catch (e) {} if (v) v.sound = sound; res(v); };
       t = setTimeout(() => fin({ heard }), ms);
       r.onresult = e => { for (const rs of e.results) for (const a of rs) if (a.transcript) heard.push(a.transcript); this.info = 'heard: ' + heard.slice(0, 3).join(' / '); fin({ heard }); };
       r.onerror = e => { this.info = 'error: ' + e.error; if (/not-allowed|service-not-allowed|audio-capture|language-not-supported/.test(e.error)) { this.broken = true; fin(null); } else fin({ heard }); };
@@ -485,7 +488,7 @@ async function greet() {
       if (!answer) return;
       if (rr === null) { wordPhase = false; return; }          // dictation not available → back to "any voice"
       if (rr.heard.length) return answer(yesNo(rr.heard));
-      if (spokeInWordPhase) { Recog.failed('no words while she spoke'); answer('voice'); }   // don't leave her hanging
+      if (spokeInWordPhase || rr.sound) { Recog.failed('no words while she spoke'); answer('voice'); }   // don't leave her hanging
     });
     const got = await waiting; wordPhase = false; Recog.stop(); return got;
   };
@@ -868,7 +871,7 @@ function phraseGame(list, opts = {}) {
         ph.classList.remove('listening');
         if (!alive()) return;
         if (rr === null) { useWords = false; armNudge(); return; }   // not available → old behaviour
-        if (!rr.heard.length && spoke) {      // the mic heard her, dictation gave nothing → accept, like before
+        if (!rr.heard.length && (spoke || rr.sound)) {   // she spoke, dictation gave no words → accept, like before
           Recog.failed('no words while she spoke');
           if (!Recog.usable()) useWords = false;
           busy = false; await onVoice(true); return;
