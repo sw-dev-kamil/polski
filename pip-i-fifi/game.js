@@ -9,7 +9,7 @@ const screen = $('#screen');
 
 /* ---------- saved state ---------- */
 const KEY = 'pipfifi.v1';
-let S = { stickers: [], voice: 'cartoon', excite: true, listen: true, sens: 'normal', kid: null, music: true, plOnly: false, recVoices: true };
+let S = { stickers: [], voice: 'cartoon', excite: true, listen: true, sens: 'normal', kid: null, music: true, plOnly: false, recVoices: true, checkWords: true };
 try { Object.assign(S, JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
 const KID = Object.assign({}, window.KID, S.kid || {});
@@ -175,7 +175,7 @@ async function seq(lines, my = tk) {
   }
   return my === tk;
 }
-function hush() { tk++; if (hasTTS) speechSynthesis.cancel(); recStop(); talk(null, false); speakingUntil = performance.now() + 300; }
+function hush() { tk++; if (hasTTS) speechSynthesis.cancel(); recStop(); if (typeof Recog !== 'undefined') Recog.stop(); talk(null, false); speakingUntil = performance.now() + 300; }
 function cheer(who) {
   $$(who ? `.char[data-who="${who}"]` : '.char').forEach(c => { c.classList.remove('cheer'); void c.offsetWidth; c.classList.add('cheer'); setTimeout(() => c.classList.remove('cheer'), 1200); });
 }
@@ -316,6 +316,59 @@ function primeSpeech() {
   try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; u.lang = 'en-GB'; speechSynthesis.speak(u); } catch (e) {}
 }
 
+
+/* ---------- word check: iPad dictation (Web Speech recognition) ----------
+   Hears WHAT she says, not just that she speaks. Forgiving on purpose — she's 3:
+   close enough counts ("capka" ≈ "czapka"), but "nie" is never taken as "tak".
+   Not every setup has it (Apple long kept it off for home-screen apps; needs Siri/Dictation on):
+   then the game quietly keeps the old "any voice counts" behaviour. */
+const Recog = {
+  api: window.SpeechRecognition || window.webkitSpeechRecognition || null,
+  broken: false, cur: null,
+  usable() { return !!this.api && !this.broken && S.checkWords !== false; },
+  listen(lang, ms = 7000) {                      // → { heard: [...] }   or null = can't be used here
+    if (!this.usable()) return Promise.resolve(null);
+    return new Promise(res => {
+      let r; try { r = new this.api(); } catch (e) { this.broken = true; return res(null); }
+      r.lang = lang; r.continuous = false; r.interimResults = false; r.maxAlternatives = 5;
+      const heard = []; let done = false, t = 0;
+      const fin = v => { if (done) return; done = true; clearTimeout(t); if (this.cur === r) this.cur = null; try { r.abort(); } catch (e) {} res(v); };
+      t = setTimeout(() => fin({ heard }), ms);
+      r.onresult = e => { for (const rs of e.results) for (const a of rs) if (a.transcript) heard.push(a.transcript); fin({ heard }); };
+      r.onerror = e => { if (/not-allowed|service-not-allowed|audio-capture|language-not-supported/.test(e.error)) { this.broken = true; fin(null); } else fin({ heard }); };
+      r.onend = () => fin({ heard });
+      try { this.cur = r; r.start(); } catch (e) { this.broken = true; fin(null); }
+    });
+  },
+  stop() { try { this.cur && this.cur.abort(); } catch (e) {} this.cur = null; }
+};
+const norm = t => t.toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+function lev(a, b) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+const simW = (a, b) => (a && b) ? 1 - lev(a, b) / Math.max(a.length, b.length) : 0;
+function heardScore(heard, target) {          // 0..1: how close the best guess is to the target words
+  const tw = norm(target).split(' ').filter(Boolean); let best = 0;
+  for (const h of heard) {
+    const hw = norm(h).split(' ').filter(Boolean); if (!hw.length) continue;
+    const whole = simW(hw.join(''), tw.join(''));
+    const words = tw.filter(w => hw.some(x => simW(x, w) >= 0.6)).length / tw.length;
+    best = Math.max(best, whole, words);
+  }
+  return best;
+}
+const WORD_OK = 0.6;
+function yesNo(heard) {                         // 'yes' | 'no' | 'unclear'
+  const ws = heard.flatMap(h => norm(h).split(' '));
+  if (ws.some(w => ['nie', 'no', 'nope', 'nein', 'nah'].includes(w))) return 'no';
+  if (ws.some(w => ['tak', 'yes', 'yeah', 'yep', 'jes', 'jest', 'ok', 'okej', 'okay', 'tag', 'dak'].includes(w))) return 'yes';
+  return 'unclear';
+}
+
 /* ---------- welcome: Pip & Fifi walk in, come up close, wave and chat ---------- */
 function greetTopic() {
   const d = new Date(), day = d.getDay(), h = d.getHours(), weekday = day >= 1 && day <= 5;
@@ -377,7 +430,8 @@ async function greet() {
   M.stop(1.5);                                  // music off before we listen for her
   const micOn = await Mic.open();
   if (!alive()) return;
-  if (micOn) Mic.watch(() => answer && answer('voice'), (lv, active) => G.style.setProperty('--lv', (1 + Math.min(0.35, (active ? lv : 0) * 7)).toFixed(3)));
+  let wordPhase = false;                          // while dictation listens, plain 'voice heard' doesn't answer
+  if (micOn) Mic.watch(() => !wordPhase && answer && answer('voice'), (lv, active) => G.style.setProperty('--lv', (1 + Math.min(0.35, (active ? lv : 0) * 7)).toFixed(3)));
 
   /* 3. chat: how was nursery? (skipped on a quick return) */
   if (!back) {
@@ -399,11 +453,32 @@ async function greet() {
   /* 4. ready to play? → Tak! */
   G.classList.add('ask-yes');
   if (!await seq([['fifi', 'en', `Are you ready to play, ${KID.en}?`], ['pip', 'pl', `Gotowa do zabawy, ${KID.plCall}?`]], my)) return;
-  let r = await listen(9000);
+  /* listen: a tap on Tak!, her voice — and, where the iPad can, WHAT she says (Tak / Nie) */
+  const ask = async ms => {
+    if (!Recog.usable()) return listen(ms);
+    wordPhase = true;
+    const waiting = listen(ms);
+    Recog.listen('pl-PL', ms).then(rr => {
+      if (!answer) return;
+      if (rr === null) { wordPhase = false; return; }          // dictation not available → back to "any voice"
+      if (rr.heard.length) answer(yesNo(rr.heard));
+    });
+    const got = await waiting; wordPhase = false; Recog.stop(); return got;
+  };
+  let r = await ask(9000), noes = 0;
+  while (alive() && r === 'no' && noes < 3) {                 // she said "Nie" → not yet!
+    noes++;
+    if (!await seq(noes === 1
+      ? [['pip', 'pl', 'Nie? Ojej! Jeszcze nie?'], ['fifi', 'en', 'Not yet? Okay! Say Tak when you are ready!']]
+      : [['pip', 'pl', 'Hihi! Nie?'], ['fifi', 'en', 'Tell us when you are ready!']], my)) return;
+    r = await ask(15000);
+  }
   if (!alive()) return;
-  if (r === 'timeout') {
+  if (r === 'timeout' || r === 'unclear' || r === 'no') {
     if (!await seq([['fifi', 'en', 'Say yes in Polish!'], ['pip', 'pl', 'Tak!']], my)) return;
-    r = await listen(8000); if (!alive()) return;
+    r = await ask(8000); if (!alive()) return;
+    while (alive() && r === 'no') { if (!await seq([['pip', 'pl', 'Nie? Dobrze, poczekamy!'], ['fifi', 'en', "Okay, we'll wait!"]], my)) return; r = await ask(20000); }
+    if (!alive()) return;
   }
   cheer(); smile(3000); confettiSmall();
   if (!await seq([['pip', 'pl', r === 'timeout' ? 'Hura!' : 'Tak! Hura!'], ['fifi', 'en', "Yay! Let's go!"], ['pip', 'pl', 'Bawimy się!']], my)) return;
@@ -743,8 +818,8 @@ function phraseGame(list, opts = {}) {
         } else showNext();
       }, 6500);
     };
-    async function onVoice() {
-      if (!alive() || busy) return;
+    async function onVoice(checked) {
+      if (!alive() || busy || (useWords && checked !== true)) return;   // with dictation, only a matching word counts
       busy = true; praised++; lastVoice = performance.now(); clearTimeout(nudgeTimer);
       cheer(); confettiBurst();
       const lines = praised === 1
@@ -755,6 +830,29 @@ function phraseGame(list, opts = {}) {
       busy = false;
       if (alive()) showNext();
     }
+    let useWords = false, tries = 0;
+    async function checkWords() {             // dictation: did she say (close to) the word?
+      while (alive()) {
+        yt.textContent = '🎤'; ph.classList.add('listening');
+        const rr = await Recog.listen('pl-PL', 7000);
+        ph.classList.remove('listening');
+        if (!alive()) return;
+        if (rr === null) { useWords = false; armNudge(); return; }   // not available → old behaviour
+        if (!rr.heard.length) {               // she said nothing
+          if (!nudged) { nudged = true; busy = true; await seq(S.plOnly ? [['pip', 'pl', `Powiedz: ${p.pl}`]] : [['fifi', 'en', 'Let\'s say it together!'], ['pip', 'pl', p.pl]]); busy = false; continue; }
+          showNext(); return;
+        }
+        if (heardScore(rr.heard, p.pl) >= WORD_OK) { busy = false; await onVoice(true); return; }
+        tries++; busy = true;
+        if (tries >= 3) {                      // never make her feel stuck
+          await seq([['pip', 'pl', `Dobra próba! ${p.pl}`], ...(S.plOnly ? [] : [['fifi', 'en', 'Good try!']])]);
+          busy = false; showNext(); return;
+        }
+        await seq(S.plOnly ? [['pip', 'pl', `Prawie! Posłuchaj: ${p.pl}`]]
+          : [['pip', 'pl', 'Prawie!'], ['fifi', 'en', 'Almost! Listen again!'], ['pip', 'pl', p.pl]]);
+        busy = false;
+      }
+    }
     async function intro() {
       busy = true; yt.textContent = '';
       const lines = S.plOnly ? [['pip', 'pl', p.pl]] : [['pip', 'pl', p.pl], ['fifi', 'en', p.whyEn || `${p.why} ${p.en}`], ['pip', 'pl', p.pl]];
@@ -763,6 +861,8 @@ function phraseGame(list, opts = {}) {
       await seq(lines);
       busy = false;
       if (!alive()) return;
+      useWords = Recog.usable();
+      if (useWords) { checkWords(); return; }
       yt.textContent = micOn ? '🎤' : '';
       if (micOn) armNudge(); else { await seq([['pip', 'pl', p.pl]]); showNext(); }
     }
@@ -777,7 +877,7 @@ function phraseGame(list, opts = {}) {
       ph.style.setProperty('--lv', (1 + Math.min(0.35, lv * 7)).toFixed(3));
     });
     intro();
-    setTimeout(() => { if (alive()) showNext(); }, 14000); // never get stuck
+    setTimeout(() => { if (alive() && !useWords) showNext(); }, 14000); // never get stuck (the word check has its own way out)
   };
   next();
 }
@@ -846,6 +946,8 @@ function parentPanel() {
       <div style="display:flex;gap:6px"><select id="vp" class="vsel">${voiceOptions('pl')}</select><button class="pbtn" id="tp">▶</button></div></div>
     <div class="row"><div><b>Voices</b><div class="small">recorded Maisie &amp; Zofia: ${REC.have.size} pieces · missing: ${Object.keys(JSON.parse(localStorage.getItem(MISS_KEY) || '{}')).length}</div></div>
       <div class="seg">${segBtn('recVoices', 'true', 'Recorded')}${segBtn('recVoices', 'false', 'iPad')}</div></div>
+    <div class="row"><div><b>Check her words</b><div class="small">${Recog.api ? (Recog.broken ? 'not allowed here (needs Siri &amp; Dictation on)' : 'uses iPad dictation') : 'not available in this app mode – try in Safari'}</div></div>
+      <div class="seg">${segBtn('checkWords', 'true', 'On')}${segBtn('checkWords', 'false', 'Off')}</div></div>
     <div class="row"><div><b>Language</b><div class="small">Polish only = test what she knows (just Pip asks)</div></div>
       <div class="seg">${segBtn('plOnly', 'false', 'Both')}${segBtn('plOnly', 'true', 'Polish only')}</div></div>
     <div class="row"><div><b>Music</b><div class="small">walk-in tune and menu music</div></div>
@@ -862,7 +964,7 @@ function parentPanel() {
     <div class="row" style="border:0"><button class="pbtn" id="tv">Test voices</button><button class="pbtn main" id="cl">Done</button></div></div>`;
   document.body.appendChild(el);
   $$('.seg button', el).forEach(b => b.onclick = () => {
-    const k = b.dataset.k; S[k] = (k === 'listen' || k === 'excite' || k === 'music' || k === 'plOnly' || k === 'recVoices') ? b.dataset.v === 'true' : b.dataset.v; save();
+    const k = b.dataset.k; S[k] = (k === 'listen' || k === 'excite' || k === 'music' || k === 'plOnly' || k === 'recVoices' || k === 'checkWords') ? b.dataset.v === 'true' : b.dataset.v; save();
     if (k === 'music') { M.on = S.music; if (!S.music) M.stop(.3); }
     $$(`.seg button[data-k="${k}"]`, el).forEach(x => x.classList.toggle('on', x === b));
   });
