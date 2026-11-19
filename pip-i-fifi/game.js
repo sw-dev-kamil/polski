@@ -527,6 +527,7 @@ const TILES = [
   { id: 'fruit',     e: '🍎', en: 'Fruit',         pl: 'Owoce',        s: '#FAD4CF' },
   { id: 'veg',       e: '🥕', en: 'Vegetables',    pl: 'Warzywa',      s: '#D7EFC4' },
   { id: 'shopping',  e: '🛒', en: 'Shopping',      pl: 'Zakupy',       s: '#FFE7A8' },
+  { id: 'teddy',     e: '🧸', en: 'Bathing teddy', pl: 'Kąpiemy misia', s: '#CDE9F7' },
   { id: 'bake',      e: '🧁', en: 'Baking',        pl: 'Pieczemy',     s: '#FBD9C4' },
   { id: 'food',      e: '🍽️', en: 'Mealtime',      pl: 'Jedzenie',     s: '#F8D7B8' },
   { id: 'bath',      e: '🛁', en: 'Bath time',     pl: 'Kąpiel',       s: '#C9E8F5' },
@@ -539,7 +540,7 @@ const TILES = [
 ];
 /* places on the main screen: each has its own scene and its own tiles (⭐ stickers everywhere) */
 const WORLDS = [
-  { id: 'home',     e: '🏠', pl: 'W domu',         en: 'At home',          tiles: ['bake', 'food', 'bath', 'bed', 'stickers'] },
+  { id: 'home',     e: '🏠', pl: 'W domu',         en: 'At home',          tiles: ['bake', 'teddy', 'food', 'bath', 'bed', 'stickers'] },
   { id: 'nursery',  e: '🏫', pl: 'W przedszkolu',  en: 'At nursery',       tiles: ['teacher', 'friends', 'needs', 'arts', 'dress', 'songs', 'stickers'] },
   { id: 'outside',  e: '🌳', pl: 'Na dworze',      en: 'Playing outside',  tiles: ['playground', 'colours', 'animals', 'count', 'stickers'] },
   { id: 'shop',     e: '🛒', pl: 'W sklepie',      en: 'At the shop',      tiles: ['shopping', 'fruit', 'veg', 'stickers'] },
@@ -625,7 +626,7 @@ async function openTile(id, el) {
   hush(); const my = tk; M.stop(1.2);
   el.style.transform = 'scale(1.12)';
   const go = { colours: () => pickGame('colours'), animals: () => pickGame('animals'), count: countGame,
-    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), dress: () => seasonMenu(), bake: bakeGame, fruit: () => pickGame('fruit'), veg: () => pickGame('veg'), shopping: shopGame, songs: songsMenu, stickers: stickerBook }[id]
+    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), dress: () => seasonMenu(), bake: bakeGame, teddy: teddyGame, fruit: () => pickGame('fruit'), veg: () => pickGame('veg'), shopping: shopGame, songs: songsMenu, stickers: stickerBook }[id]
     || (window.TOPICS[id] && (() => phraseGame(window.TOPICS[id])));
   await Promise.race([seq([['fifi', 'en', 'Yay! ' + t.en + '!'], ['pip', 'pl', 'Hura! ' + t.pl + '!']], my), wait(3200)]);
   opening = false;
@@ -1346,6 +1347,82 @@ function shopGame() {
   (async () => {
     await wait(250);
     if (!await seq([['pip', 'pl', `Idziemy na zakupy, ${KID.plCall}!`], ...(bi() ? [['fifi', 'en', "Let's go shopping! Here is our list!"]] : [])], my)) return;
+    prompt();
+  })();
+}
+
+
+/* ---------- 🧸 bathing teddy: body parts ---------- */
+function teddyGame() {
+  const P = window.BODY, T = window.TEDDY_ART, byId = id => P.find(x => x.id === id);
+  const order = shuffle(P.map(p => p.id));
+  const bi = () => !S.plOnly, jest = o => o.plural ? 'są' : 'jest';
+  let step = 0, busy = true, hintT = 0;
+  const my = show(`<div class="bathroom"><div class="b-tiles"></div><div class="b-floor"></div><div class="tub"></div><div class="mat"></div></div>
+    ${topbar(order.length + 2, 0)}
+    <div class="teddy" id="teddy">${T.svg()}</div><div class="shower" id="shower">🚿</div>
+    <button class="towel" id="towel">🧺</button>${chars()}`);
+  bindHome();
+  const ted = $('#teddy'), alive = () => $('#teddy') === ted, foam = $('.foam-layer', ted);
+  const target = () => byId(order[step]);
+  const ask = o => [['pip', 'pl', `Umyj ${o.acc}!`], ...(bi() ? [['fifi', 'en', `Wash teddy's ${o.en}!`]] : [])];
+  const hint = () => { clearTimeout(hintT); hintT = setTimeout(() => { if (!busy) { const g = $(`[data-part="${target().id}"]`, ted); g && g.classList.add('hint'); } }, 9000); };
+  const prompt = async () => { busy = false; hint(); await seq(ask(target())); };
+  const dot = n => { const d = $$('.dots i')[n]; if (d) d.classList.add('on'); };
+  $('#again').onclick = () => { hush(); if (step < order.length) seq(ask(target())); };
+  ted.addEventListener('click', async e => {
+    if (busy || step >= order.length) return;
+    const g = e.target.closest('[data-part]'); if (!g) return;
+    unlockAudio();
+    let id = g.dataset.part; if (id === 'body') id = 'brzuszek';           // the tummy area counts
+    const c = target(); hush(); const t = tk;
+    if (id !== c.id) {
+      const o = byId(id); ted.classList.remove('nope'); void ted.offsetWidth; ted.classList.add('nope');
+      await seq([['pip', 'pl', `To ${jest(o)} ${o.pl}.`], ...(bi() ? [['fifi', 'en', o.plural ? `Those are teddy's ${o.en}!` : `That's teddy's ${o.en}!`]] : []), ['pip', 'pl', `Gdzie ${jest(c)} ${c.pl}?`]], t);
+      return;
+    }
+    busy = true; clearTimeout(hintT); $$('.hint', ted).forEach(x => x.classList.remove('hint'));
+    foam.insertAdjacentHTML('beforeend', `<g class="suds">${T.foam(id)}</g>`); [0, 120, 240].forEach(d => setTimeout(() => sfx('pop'), d));
+    step++; dot(step - 1); cheer('pip');
+    if (!await seq([['pip', 'pl', `${cap(c.pl)}! ${praisePL()}`], ...(bi() ? [['fifi', 'en', praiseEN()]] : [])], t)) return;
+    if (step >= order.length) return rinse();
+    prompt();
+  });
+  async function rinse() {
+    const t = tk; const sh = $('#shower'); sh.classList.add('in');
+    if (!await seq([['pip', 'pl', 'Spłukujemy!'], ...(bi() ? [['fifi', 'en', 'Tap the shower to rinse!']] : [])], t)) return;
+    let done = false;
+    sh.onclick = async () => {
+      if (done) return; done = true; unlockAudio(); hush(); const tt = tk; dot(order.length);
+      sh.classList.add('on'); sfx('splash'); setTimeout(() => sfx('splash'), 500); setTimeout(() => sfx('splash'), 1000);
+      for (let i = 0; i < 40; i++) setTimeout(() => {
+        const r = ted.getBoundingClientRect(), d = document.createElement('div'); d.className = 'drop';
+        d.style.left = (r.left + Math.random() * r.width) + 'px'; d.style.top = (r.top - 40) + 'px'; d.style.animationDuration = '.7s';
+        document.body.appendChild(d); setTimeout(() => d.remove(), 900);
+      }, i * 45);
+      setTimeout(() => { $$('.suds', ted).forEach(x => x.classList.add('rinse')); ted.classList.add('rinsed'); }, 600);
+      await wait(2000); if (tt !== tk) return; sh.classList.remove('on', 'in');
+      dry();
+    };
+  }
+  async function dry() {
+    const t = tk; const tw = $('#towel'); tw.classList.add('in');
+    if (!await seq([['pip', 'pl', 'Ręcznik!'], ...(bi() ? [['fifi', 'en', 'Now the towel! Tap the towel!']] : [])], t)) return;
+    let done = false;
+    tw.onclick = async () => {
+      if (done) return; done = true; unlockAudio(); hush(); const tt = tk; dot(order.length + 1);
+      tw.classList.add('wipe'); ted.classList.add('clean'); sfx('ding'); cheer(); confettiSmall();
+      for (let i = 0; i < 8; i++) setTimeout(() => { const r = ted.getBoundingClientRect(), d = document.createElement('div'); d.className = 'sparkle'; d.textContent = '✨';
+        d.style.left = (r.left + Math.random() * r.width) + 'px'; d.style.top = (r.top + Math.random() * r.height * .8) + 'px'; document.body.appendChild(d); setTimeout(() => d.remove(), 1200); }, i * 120);
+      if (!await seq([['pip', 'pl', `Czysty miś! Brawo, ${KID.plCall}!`], ...(bi() ? [['fifi', 'en', 'Teddy is all clean!']] : [])], tt)) return;
+      await wait(600); if (tt !== tk) return;
+      const words = order.map(id => byId(id)).map(o => ({ pl: cap(o.pl) + '!', en: cap(o.en), art: T.svg(o.id), whyEn: o.plural ? `These are the ${o.en}!` : `This is the ${o.en}!` }));
+      phraseGame(words, { intro: [['pip', 'pl', `Teraz mówimy, ${KID.plCall}!`], ['fifi', 'en', "Now let's say the words!"]], done: () => reward(teddyGame) });
+    };
+  }
+  (async () => {
+    await wait(250);
+    if (!await seq([['pip', 'pl', `Kąpiemy misia, ${KID.plCall}!`], ...(bi() ? [['fifi', 'en', "Teddy is all muddy! Let's give him a bath!"]] : [])], my)) return;
     prompt();
   })();
 }

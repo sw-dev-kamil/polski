@@ -424,3 +424,33 @@ body.sunny #screen::before { content: ''; position: fixed; inset: 0; background:
   .basket { left: 8vw; bottom: 26vh; }
   .till { right: 4vw; bottom: 26vh; }
 }
+
+/* ============ 🧸 bathing teddy ============ */
+.bathroom { position: absolute; inset: 0; z-index: 0; }
+.b-tiles { position: absolute; inset: 0; background-color: #E3F3FB; background-image: linear-gradient(#C9E6F5 2px, transparent 2px), linear-gradient(90deg, #C9E6F5 2px, transparent 2px); background-size: 8vmin 8vmin; }
+.b-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 16vh; background: #BFD9E6; border-top: 1vmin solid #A9C9DA; }
+.tub { position: absolute; right: 12vw; bottom: 12vh; width: 46vmin; height: 20vmin; border-radius: 4vmin 4vmin 12vmin 12vmin; background: #fff; box-shadow: inset 0 -2vmin 0 #E6EEF3, 0 1vmin 0 #C9D6DE; }
+.tub::before { content: ''; position: absolute; left: 3vmin; right: 3vmin; top: 2vmin; height: 5vmin; border-radius: 99px; background: #9FD8F5; }
+.mat { position: absolute; left: 50%; bottom: 7vh; width: 44vmin; height: 7vmin; transform: translateX(-50%); border-radius: 99px; background: repeating-linear-gradient(90deg, #FF9AB0 0 3vmin, #FFC2D0 3vmin 6vmin); }
+.teddy { position: absolute; left: 50%; bottom: 9vh; height: 62vh; transform: translateX(-50%); z-index: 3; }
+.teddy svg { height: 100%; width: auto; display: block; overflow: visible; }
+.teddy [data-part] { cursor: pointer; transform-box: fill-box; transform-origin: center; }
+.teddy:not(.clean) .teddy-svg { filter: sepia(.25) saturate(.85); }
+.teddy:not(.clean) [data-part="body"], .teddy:not(.clean) [data-part="nozki"] { filter: brightness(.88); }
+.teddy.nope { animation: no .5s ease; }
+.teddy [data-part].hint { animation: clHint 1s ease-in-out infinite; }
+.teddy .suds { animation: pop .35s cubic-bezier(.3,1.6,.5,1); transform-box: fill-box; transform-origin: center; }
+.teddy .suds.rinse { transition: opacity 1.2s, transform 1.2s; opacity: 0; transform: translateY(30px); }
+.teddy.clean { animation: cakeYay 1s ease-in-out 2; }
+.teddy-svg .hl > * { fill: #FFD23F !important; }
+.shower { position: absolute; left: 50%; top: 12vh; transform: translate(-50%, -30vh); font-size: 14vmin; z-index: 4; transition: transform .6s cubic-bezier(.3,1.3,.5,1); cursor: pointer; }
+.shower.in { transform: translate(-50%, 0); animation: tapMe 1.2s ease-in-out infinite; }
+.shower.on { animation: none; transform: translate(-50%, 0) rotate(-12deg); }
+.towel { position: absolute; right: 18vw; bottom: 30vh; font-size: 14vmin; z-index: 4; opacity: 0; pointer-events: none; transition: transform .8s, opacity .4s; }
+.towel.in { opacity: 1; pointer-events: auto; animation: tapMe 1.1s ease-in-out infinite; }
+.towel.wipe { animation: none; transform: translate(-28vw, -10vh) rotate(-20deg) scale(1.4); opacity: 0; }
+.sparkle { position: fixed; font-size: 6vmin; z-index: 20; pointer-events: none; animation: pop .5s ease, fadeOut 1.2s ease forwards; }
+@keyframes fadeOut { 70% { opacity: 1; } 100% { opacity: 0; transform: translateY(-4vmin); } }
+@media (orientation: portrait) { .teddy { bottom: 26vh; height: 46vh; } .tub { bottom: 28vh; right: 3vw; } .mat { bottom: 24vh; } .b-floor { height: 30vh; } }
+.teddy .mud { pointer-events: none; transition: opacity 1.4s; }
+.teddy.rinsed .mud, .phrase .mud { opacity: 0; }

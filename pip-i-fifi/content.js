@@ -200,3 +200,13 @@ window.VEG = [
   { pl: "kukurydza",  en: "corn",       emoji: "🌽" },
   { pl: "cebula",     en: "onion",      emoji: "🧅" }
 ];
+
+/* 🧸 Bathing teddy: body parts. acc = after "Umyj …" ("Umyj głowę!") */
+window.BODY = [
+  { id: "glowa",    pl: "głowa",    acc: "głowę",    en: "head",  emoji: "🙂" },
+  { id: "uszy",     pl: "uszy",     acc: "uszy",     en: "ears",  emoji: "👂", plural: true },
+  { id: "nos",      pl: "nos",      acc: "nos",      en: "nose",  emoji: "👃" },
+  { id: "brzuszek", pl: "brzuszek", acc: "brzuszek", en: "tummy", emoji: "🧸" },
+  { id: "raczki",   pl: "rączki",   acc: "rączki",   en: "hands", emoji: "🖐️", plural: true },
+  { id: "nozki",    pl: "nóżki",    acc: "nóżki",    en: "feet",  emoji: "🦶", plural: true }
+];
