@@ -147,6 +147,46 @@ const SUN = {
   }
 };
 
+/* Train ride: an ORIGINAL choo-choo tune (placeholder until Kamil's own recording of the song), 138 bpm, loops */
+function chuff(c, out, t, v) {                     // steam "ch" — low-passed noise
+  if (!NOISE || NOISE.sampleRate !== c.sampleRate) shaker(c, c.createGain(), 0, 0);
+  const s = c.createBufferSource(); s.buffer = NOISE;
+  const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1800; bp.Q.value = .8;
+  s.connect(bp).connect(env(c, out, t, v, .09, .004)); s.start(t); s.stop(t + .12);
+}
+function whistle(c, out, t, v) {                   // toot toot!
+  [0, .42].forEach(d => {
+    const o = c.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(880, t + d); o.frequency.linearRampToValueAtTime(940, t + d + .08);
+    const o2 = c.createOscillator(); o2.type = 'sine'; o2.frequency.value = 1108; 
+    const g = env(c, out, t + d, v, .32, .03); o.connect(g); o2.connect(g); o.start(t + d); o2.start(t + d); o.stop(t + d + .4); o2.stop(t + d + .4);
+  });
+}
+const TRAIN = {
+  bpm: 138, bars: 8, loop: true,
+  chords: ['C', 'C', 'F', 'C', 'C', 'G', 'F', 'C'],
+  melody: mel([
+    [['C5', 1], ['E5', 1], ['G5', 1], ['G5', 1]],
+    [['A5', .5], ['G5', .5], ['E5', 1], ['C5', 2]],
+    [['F5', 1], ['A5', 1], ['C6', 1], ['A5', 1]],
+    [['G5', 2], [null, 2]],
+    [['E5', 1], ['G5', 1], ['C6', 1], ['B5', 1]],
+    [['A5', .5], ['B5', .5], ['D6', 1], ['G5', 2]],
+    [['F5', 1], ['E5', 1], ['D5', 1], ['B4', 1]],
+    [['C5', 2], [null, 2]]
+  ]),
+  play(c, out, b) {
+    whistle(c, out, 0, .22);
+    this.melody.forEach(([bar, beat, n]) => { const t = (bar * 4 + beat) * b; marimba(c, out, t, hz(n), .45); });
+    this.chords.forEach((ch, bar) => {
+      const [r, third, fifth] = CH[ch], t0 = bar * 4 * b;
+      [0, 2].forEach(k => bass(c, out, t0 + k * b, hz((k ? fifth : r) + '3'), .36, b * .9));
+      [1, 3].forEach(k => [third + '4', fifth + '4'].forEach(n => marimba(c, out, t0 + k * b, hz(n), .1)));
+      for (let k = 0; k < 8; k++) chuff(c, out, t0 + k * b / 2, k % 2 ? .18 : .32);        // ch-ch ch-ch
+      if (bar === 4) whistle(c, out, t0, .16);
+    });
+  }
+};
+
 /* Menu: gentle music-box loop, 96 bpm, 16 bars */
 const MENU = {
   bpm: 96, bars: 16, loop: true,
@@ -205,7 +245,7 @@ function render(song) {
 }
 
 /* ---------- player ---------- */
-const SONGS = { walk: WALK, menu: MENU, snow: SNOW, sun: SUN };
+const SONGS = { walk: WALK, menu: MENU, snow: SNOW, sun: SUN, train: TRAIN };
 window.Music = {
   on: true, getCtx: () => null, songs: {}, ready: null,
   src: null, g: null, cur: null, base: 0, ducked: false, undo: 0,

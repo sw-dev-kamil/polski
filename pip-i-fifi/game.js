@@ -522,6 +522,7 @@ const TILES = [
   { id: 'friends', e: '🧸', en: 'Playing with friends', pl: 'Zabawa z dziećmi', s: '#CDE5F7' },
   { id: 'needs',   e: '🥤', en: 'At nursery', pl: 'W przedszkolu', s: '#D3EFC9' },
   { id: 'dress',   e: '🧥', en: 'Getting dressed', pl: 'Ubieramy się', s: '#E4D4F4' },
+  { id: 'songs',   e: '🎵', en: 'Songs', pl: 'Piosenki', s: '#FFD3E4' },
   { id: 'stickers',e: '⭐', en: 'Stickers', pl: 'Naklejki', s: '#F7E6A6' }
 ];
 function home(greet) {
@@ -546,7 +547,7 @@ async function openTile(id, el) {
   hush(); const my = tk; M.stop(1.2);
   el.style.transform = 'scale(1.12)';
   const go = { colours: () => pickGame('colours'), animals: () => pickGame('animals'), count: countGame,
-    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), dress: () => seasonMenu(), stickers: stickerBook }[id];
+    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), dress: () => seasonMenu(), songs: songsMenu, stickers: stickerBook }[id];
   await Promise.race([seq([['fifi', 'en', 'Yay! ' + t.en + '!'], ['pip', 'pl', 'Hura! ' + t.pl + '!']], my), wait(3200)]);
   opening = false;
   if (my === tk) go();
@@ -994,6 +995,113 @@ function reward(again) {
   $('#ra').onclick = again;
   seq([['fifi', 'en', `Wow! Yay! A sticker for you, ${KID.en}!`], ['pip', 'pl', `Hura! Naklejka dla ciebie! Brawo, ${KID.plCall}!`]], my).then(ok => ok && cheer());
 }
+
+/* ---------- songs: list + song screen with an animation ---------- */
+function songsMenu() {
+  const L = window.SONGS;
+  if (L.length === 1) return songScreen(L[0]);            // only one song so far → straight in
+  const my = show(`${topbar(0, 0)}<div class="menu seasons">${L.map((g, i) =>
+    `<button class="tile" data-i="${i}" style="--s:#FFD3E4"><span class="e">${g.e}</span><span class="l">${g.title}</span></button>`).join('')}</div>${chars()}`);
+  bindHome();
+  $$('.seasons .tile').forEach(t => t.onclick = () => { unlockAudio(); songScreen(L[+t.dataset.i]); });
+  seq([['pip', 'pl', 'Piosenki! Którą śpiewamy?'], ...(S.plOnly ? [] : [['fifi', 'en', 'Songs! Which one shall we sing?']])], my);
+}
+const TRAIN_ART = {
+  loco: `<svg viewBox="0 0 200 150" class="loco">
+    <rect x="18" y="58" width="104" height="52" rx="12" fill="#E8505B"/>
+    <rect x="112" y="22" width="66" height="88" rx="10" fill="#C93E48"/>
+    <rect x="124" y="34" width="42" height="34" rx="8" fill="#BFE3F5"/>
+    <rect x="40" y="26" width="22" height="34" rx="4" fill="#5A4632"/><rect x="34" y="20" width="34" height="10" rx="4" fill="#3E3024"/>
+    <circle cx="18" cy="84" r="10" fill="#FFE066"/>
+    <path d="M6 110 L22 96 L22 112 Z" fill="#5A4632"/>
+    <rect x="18" y="104" width="160" height="10" rx="4" fill="#8E2A32"/>
+    <g class="wheel" style="transform-origin:52px 120px"><circle cx="52" cy="120" r="18" fill="#3E3024"/><circle cx="52" cy="120" r="7" fill="#FFC93C"/><path d="M52 102 V138 M34 120 H70" stroke="#FFC93C" stroke-width="3"/></g>
+    <g class="wheel" style="transform-origin:110px 120px"><circle cx="110" cy="120" r="18" fill="#3E3024"/><circle cx="110" cy="120" r="7" fill="#FFC93C"/><path d="M110 102 V138 M92 120 H128" stroke="#FFC93C" stroke-width="3"/></g>
+    <g class="wheel" style="transform-origin:158px 124px"><circle cx="158" cy="124" r="14" fill="#3E3024"/><circle cx="158" cy="124" r="5" fill="#FFC93C"/><path d="M158 110 V138 M144 124 H172" stroke="#FFC93C" stroke-width="3"/></g>
+  </svg>`,
+  car: c => `<svg viewBox="0 0 160 150" class="car">
+    <rect x="8" y="40" width="144" height="70" rx="12" fill="${c}"/>
+    <rect x="8" y="40" width="144" height="12" rx="6" fill="#000" opacity=".1"/>
+    <rect x="22" y="54" width="116" height="40" rx="10" fill="#FFF8E7"/>
+    <rect x="0" y="100" width="160" height="10" rx="4" fill="#5A4632"/>
+    <g class="wheel" style="transform-origin:42px 122px"><circle cx="42" cy="122" r="15" fill="#3E3024"/><circle cx="42" cy="122" r="5" fill="#FFC93C"/><path d="M42 107 V137 M27 122 H57" stroke="#FFC93C" stroke-width="3"/></g>
+    <g class="wheel" style="transform-origin:118px 122px"><circle cx="118" cy="122" r="15" fill="#3E3024"/><circle cx="118" cy="122" r="5" fill="#FFC93C"/><path d="M118 107 V137 M103 122 H133" stroke="#FFC93C" stroke-width="3"/></g>
+  </svg>`
+};
+function songScreen(song) {
+  const CARS = ['#5B8DEF', '#4CC373', '#FFC93C', '#C77DFF'];
+  const my = show(`${topbar(0, 0)}
+    <div class="rail"></div><div class="station"><div class="st-sign">Stacja</div></div><div class="platform" id="plat"></div>
+    <div class="train" id="train">
+      <div class="tcar loco-wrap">${TRAIN_ART.loco}<div class="driver">${charHTML('pip')}</div></div>
+      ${CARS.map((c, i) => `<div class="tcar">${TRAIN_ART.car(c)}<div class="seat" id="seat${i}"></div></div>`).join('')}
+    </div>
+    <button class="big-play song-play" id="sp" aria-label="Play">${ICON.play}</button>
+    <div class="song-title">${song.e} ${song.title}</div>`);
+  bindHome();
+  M.stop(.5);
+  const train = $('#train'), seats = CARS.map((c, i) => $('#seat' + i)), plat = $('#plat');
+  seats[0].innerHTML = charHTML('fifi');                         // Fifi rides in the first carriage
+  setTimeout(() => alive() && wait4(), 50);
+  const riders = window.ANIMALS.map(a => a.emoji);
+  let x = 0, speed = 0, target = 0, phase = 'in', stopT = 0, nextSeat = 1, raf = 0, playing = false, audio = null, smokeT = 0;
+  const W = () => innerWidth, TW = () => train.getBoundingClientRect().width;
+  const startX = () => W() + 20, stopX = () => W() * 0.5 - TW() * 0.12, endX = () => -TW() - 40;
+  x = startX();
+  let who = '';
+  const wait4 = () => {                                        // the next passenger waits (and bounces) on the platform
+    who = riders[Math.floor(Math.random() * riders.length)];
+    plat.innerHTML = `<span class="waiting">${who}</span>`;
+  };
+  const board = () => {                                        // …and hops into the next free seat when the train stops
+    const w = plat.querySelector('.waiting'); if (w) w.classList.add('hop');
+    setTimeout(() => { if (!alive()) return;
+      plat.innerHTML = ''; const seat = seats[nextSeat]; if (!seat) return;
+      seat.innerHTML = `<span class="rider">${who}</span>`; nextSeat = nextSeat >= seats.length - 1 ? 1 : nextSeat + 1;
+      if (nextSeat === 1) setTimeout(() => seats.slice(1).forEach(s => s.innerHTML = ''), 2500);   // everyone gets off after a full train
+    }, 1300);
+  };
+  const alive = () => $('#train') === train;
+  const puff = () => {
+    const r = train.querySelector('.loco').getBoundingClientRect(), p = document.createElement('div');
+    p.className = 'smoke'; p.style.left = (r.left + r.width * 0.25) + 'px'; p.style.top = (r.top + r.height * 0.08) + 'px';
+    document.body.appendChild(p); setTimeout(() => p.remove(), 1800);
+  };
+  let last = performance.now();
+  const step = now => {
+    if (!alive()) { cancelAnimationFrame(raf); return; }
+    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    const cruise = W() * 0.22;
+    if (phase === 'in' || phase === 'out') speed += (cruise - speed) * dt * 2;
+    if (phase === 'in') { const d = x - stopX(); if (d < cruise * 0.9) speed = Math.max(20, cruise * d / (cruise * 0.9)); if (d <= 2) { phase = 'stop'; stopT = now; speed = 0; board(); } }
+    if (phase === 'stop' && now - stopT > 2600) phase = 'out';
+    if (phase === 'out' && x < endX()) { x = startX(); phase = 'in'; wait4(); }
+    x -= speed * dt;
+    train.style.transform = `translateX(${x}px)`;
+    train.classList.toggle('moving', speed > 15);
+    if (speed > 15 && now - smokeT > 380) { smokeT = now; puff(); }
+    raf = requestAnimationFrame(step);
+  };
+  const stopAll = () => { playing = false; if (audio) audio.pause(); M.stop(.4); $('#sp') && ($('#sp').innerHTML = ICON.play); };
+  const play = async () => {
+    unlockAudio(); hush(); playing = true; $('#sp').innerHTML = '❚❚';
+    if (!raf) { last = performance.now(); raf = requestAnimationFrame(step); }
+    let ok = false;
+    try { const r = await fetch(song.file, { method: 'HEAD', cache: 'no-cache' }); ok = r.ok; } catch (e) {}
+    if (!alive() || !playing) return;
+    if (ok) {                                                   // Kamil's recording
+      if (!audio) { audio = new Audio(song.file); audio.onended = () => { stopAll(); cheer(); confettiSmall(); }; }
+      audio.play().catch(() => {});
+    } else M.play(song.fallback, .6, true);                    // until then: an original choo-choo tune
+  };
+  $('#sp').onclick = () => playing ? stopAll() : play();
+  $('#again').onclick = () => { stopAll(); if (audio) audio.currentTime = 0; play(); };
+  const leave = () => { if (audio) { audio.pause(); audio = null; } M.stop(.3); };
+  $('#home').addEventListener('click', leave);
+  raf = requestAnimationFrame(t => { last = t; step(t); });
+  seq([['pip', 'pl', 'Jedzie pociąg! Ciuch, ciuch!'], ...(S.plOnly ? [] : [['fifi', 'en', "Choo choo! All aboard! Let's sing!"]])], my).then(ok => { if (ok && alive()) play(); });
+}
+
 function stickerBook() {
   const my = show(`${topbar(0, 0)}<div class="book">${window.STICKERS.map(s =>
     `<button class="slot ${S.stickers.includes(s) ? 'has' : ''}" data-s="${s}">${S.stickers.includes(s) ? s : ''}</button>`).join('')}</div>${chars()}`);

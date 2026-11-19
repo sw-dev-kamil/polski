@@ -101,3 +101,9 @@ window.SEASONS = {
     ] }
 };
 window.CLOTHES = window.SEASONS.winter.clothes;     // (older code)
+
+/* Songs tab. file = recording in songs/ (Kamil's own recording); until it exists an original tune plays.
+   anim: which animation runs while the song plays. */
+window.SONGS = [
+  { id: "pociag", title: "Jedzie pociąg z daleka", e: "🚂", file: "songs/pociag.mp3", anim: "train", fallback: "train" }
+];

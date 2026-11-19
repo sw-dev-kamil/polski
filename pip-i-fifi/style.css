@@ -287,3 +287,32 @@ body.sunny #screen::before { content: ''; position: fixed; inset: 0; background:
 .seasons .tile { width: 26vmin; height: 28vmin; background: linear-gradient(#fff 55%, var(--s)); }
 .seasons .tile .e { font-size: 13vmin; }
 .seasons .tile .l { font-size: 3.6vmin; }
+
+/* ============ songs: the train ============ */
+.rail { position: absolute; left: 0; right: 0; bottom: 9vh; height: 2.4vmin; z-index: 1;
+  background: repeating-linear-gradient(90deg, #8B5A2B 0 1.6vmin, transparent 1.6vmin 6vmin), linear-gradient(transparent 30%, #6B6B6B 30% 55%, transparent 55%); }
+.station { position: absolute; left: 50%; bottom: 11vh; transform: translateX(-50%); width: 60vmin; height: 44vmin; z-index: 1; }
+.st-sign { position: absolute; left: 50%; top: 0; transform: translateX(-50%); background: #fff; border: .6vmin solid #5A4632; border-radius: 1.5vmin; padding: .5vmin 2.4vmin; font-weight: 900; font-size: 3.4vmin; color: #5A4632; }
+.st-sign::after { content: ''; position: absolute; left: 50%; top: 100%; width: 1vmin; height: 40vmin; margin-left: -.5vmin; background: #8B6B4A; z-index: -1; }
+.platform { position: absolute; left: 50%; bottom: 2vh; margin-left: 4vmin; width: 22vmin; height: 4vmin; background: #C9B49A; border-radius: 1vmin; box-shadow: 0 .8vmin 0 #A8927A; font-size: 11vmin; display: flex; justify-content: center; align-items: flex-end; z-index: 4; }
+.platform .waiting { display: inline-block; margin-bottom: 2vmin; animation: wiggleWait 1s ease-in-out infinite; }
+.platform .waiting.hop { animation: hopIn 1.3s ease-in forwards; }
+@keyframes wiggleWait { 50% { transform: translateY(-2vmin) rotate(-6deg); } }
+@keyframes hopIn { 0% { transform: translateY(0); } 30% { transform: translateY(-5vmin); } 60% { transform: translate(-8vmin, -2vmin) scale(.9); opacity: 1; } 100% { transform: translate(-6vmin, -16vmin) scale(.7); opacity: 0; } }
+.train { position: absolute; left: 0; bottom: 9.5vh; display: flex; align-items: flex-end; gap: .5vmin; z-index: 3; will-change: transform; }
+.tcar { position: relative; width: 30vmin; }
+.loco-wrap { width: 40vmin; }
+.tcar svg { width: 100%; height: auto; display: block; }
+.driver { position: absolute; left: 58%; bottom: 36%; width: 15vmin; }
+.driver .char, .seat .char { position: relative; width: 100%; }
+.seat { position: absolute; left: 50%; bottom: 33%; transform: translateX(-50%); width: 16vmin; text-align: center; }
+.seat .rider { font-size: 12vmin; display: inline-block; animation: pop .5s cubic-bezier(.3,1.6,.5,1); }
+.train.moving .wheel { animation: spin .5s linear infinite; }
+@keyframes spin { to { transform: rotate(-360deg); } }
+.train.moving .tcar { animation: rattle .25s ease-in-out infinite; }
+@keyframes rattle { 50% { transform: translateY(-.4vmin); } }
+.smoke { position: fixed; width: 5vmin; height: 5vmin; border-radius: 50%; background: rgba(255,255,255,.9); z-index: 2; pointer-events: none; animation: smoke 1.8s ease-out forwards; }
+@keyframes smoke { from { transform: scale(.4); opacity: .95; } to { transform: translate(6vmin, -16vmin) scale(2.2); opacity: 0; } }
+.song-play { position: absolute; left: 50%; top: 14vh; transform: translateX(-50%); width: 16vmin; height: 16vmin; font-size: 6vmin; font-weight: 900; color: #fff; z-index: 6; }
+.song-title { position: absolute; left: 50%; top: 33vh; transform: translateX(-50%); font-size: 4vmin; font-weight: 900; color: #5A4632; background: rgba(255,255,255,.75); padding: 1vmin 3vmin; border-radius: 99px; white-space: nowrap; z-index: 6; }
+.song-play { animation: none; margin: 0; }
