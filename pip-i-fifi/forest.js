@@ -160,27 +160,39 @@ const GEO = {
 
 /* Fifi: a low-poly fox on four legs, built from parts so the code can animate them
    (Kamil's model later: body, head, tail and 4 legs as separate objects, origins at the joints) */
-/* Pip the hedgehog in 3D (front = -z), spikes on his back */
+/* Pip the hedgehog in 3D (front = -z): tan face with a pointy snout, a coat of chunky brown spikes
+   sweeping backwards, four short legs (separate, so they can trot) */
 function makePip() {
-  const g = new THREE.Group(), P = [];
-  P.push(part(Ball(.5, 7, 5), C.hog, { p: [0, .48, .05], s: [.85, .78, 1.05], jitter: .02, seed: 3 }));
-  const up = new THREE.Vector3(0, 1, 0), q = new THREE.Quaternion(), e = new THREE.Euler();
-  for (let row = 0; row < 5; row++) for (let a = 0; a < 9; a++) {
-    const th = (a / 8 - .5) * 2.6, ph = .25 + row * .3;                  // around the back, from the top towards the tail
-    const n = new THREE.Vector3(Math.sin(th) * Math.sin(ph + .3), Math.cos(ph + .3) * .9 + .25, Math.cos(th) * Math.sin(ph + .3) * .9 + .25).normalize();
-    if (n.z < -.35) continue;
-    q.setFromUnitVectors(up, n); e.setFromQuaternion(q, 'ZYX');
-    const base = new THREE.Vector3(n.x * .4, .48 + n.y * .36, .05 + n.z * .48);
-    P.push(part(Cone(.1, .42, 4), (row + a) % 3 ? C.hogSpike : C.hog, { p: [base.x + n.x * .17, base.y + n.y * .17, base.z + n.z * .17], r: [e.x, e.y, e.z] }));
+  const g = new THREE.Group(), body = new THREE.Group(), P = []; g.add(body);
+  const TAN = 0xD9AE7E, TAN2 = 0xC99A68, SP = [0x6B4226, 0x7E5232, 0x5A3820, 0x8A5C3A];
+  P.push(part(Ball(.5, 7, 5), TAN, { p: [0, .5, 0], s: [.72, .62, 1.0], jitter: .02, seed: 3 }));             // tummy / body
+  P.push(part(Ball(.36, 7, 5), TAN, { p: [0, .55, -.45], s: [.95, .9, 1], jitter: .02, seed: 4 }));           // head
+  P.push(part(Cone(.27, .58, 7), TAN, { p: [0, .47, -.82], r: [-PI / 2 - .14, 0, 0], jitter: .015, seed: 6 })); // snout
+  P.push(part(Ico(.08), 0x241A14, { p: [0, .43, -1.1] }));                                                  // nose
+  [-1, 1].forEach(sx => {
+    P.push(part(Ico(.055), 0x161210, { p: [sx * .25, .62, -.62] }));                                          // eyes
+    P.push(part(Ball(.13, 6, 4), TAN2, { p: [sx * .3, .8, -.38], s: [1, .9, .45], r: [0, sx * .5, 0] }));    // ears
+    P.push(part(Ball(.08, 6, 4), 0x8A5C3A, { p: [sx * .31, .8, -.42], s: [1, .9, .3], r: [0, sx * .5, 0] }));
+  });
+  // spiky coat: a brown shell + many chunky spikes pointing out and back
+  const C0 = new THREE.Vector3(0, .62, .1), R = new THREE.Vector3(.52, .5, .66);
+  P.push(part(Ball(1, 7, 5), SP[0], { p: [C0.x, C0.y, C0.z], s: [R.x, R.y, R.z], jitter: .03, seed: 8 }));
+  const up = new THREE.Vector3(0, 1, 0), q = new THREE.Quaternion(), e = new THREE.Euler(), N = 90;
+  for (let i = 0; i < N; i++) {
+    const y = 1 - (i + .5) / N * 2, rr = Math.sqrt(1 - y * y), th = i * 2.39996;
+    const n = new THREE.Vector3(Math.cos(th) * rr, y, Math.sin(th) * rr);
+    if (n.y < -.3 || (n.z < -.3 && n.y < .55) || n.z < -.72) continue;      // keep the face and tummy clear
+    const base = new THREE.Vector3(n.x * R.x, n.y * R.y, n.z * R.z).add(C0);
+    const dir = n.clone().add(new THREE.Vector3(0, .1, .75)).normalize();     // sweep backwards
+    const len = .3 + ((i * 37) % 10) / 10 * .16;
+    q.setFromUnitVectors(up, dir); e.setFromQuaternion(q, 'ZYX');
+    P.push(part(Cone(.13, len, 4), SP[i % 4], { p: [base.x + dir.x * len * .4, base.y + dir.y * len * .4, base.z + dir.z * len * .4], r: [e.x, e.y, e.z] }));
   }
-  P.push(part(Ball(.3, 7, 5), C.hogFace, { p: [0, .45, -.42], s: [1, .9, 1] }));
-  P.push(part(Cone(.14, .3, 6), C.hogFace, { p: [0, .4, -.72], r: [-PI / 2, 0, 0] }));
-  P.push(part(Ico(.07), C.hogNose, { p: [0, .41, -.88] }));
-  [-.13, .13].forEach(x => { P.push(part(Ico(.05), C.hogNose, { p: [x, .56, -.64] })); P.push(part(Ico(.06), C.cheek, { p: [x * 1.7, .4, -.6] }));
-    P.push(part(Ball(.08, 5, 3), C.hogFace, { p: [x * 1.9, .74, -.42] })); });
-  [[-.2, -.25], [.2, -.25], [-.2, .25], [.2, .25]].forEach(([x, z]) => P.push(part(Ball(.09, 5, 3), C.hogNose, { p: [x, .06, z], s: [1, .7, 1.3] })));
-  const m = mesh(merge(P)); g.add(m);
-  return { g, m };
+  const m = mesh(merge(P)); body.add(m);
+  const legs = [[-.24, -.3], [.24, -.3], [-.24, .32], [.24, .32]].map(([x, z]) => {
+    const l = mesh(merge([part(Cyl(.12, .13, .24, 6), TAN2, { p: [0, -.12, 0] }), part(Ball(.13, 6, 3), TAN2, { p: [0, -.22, -.05], s: [1, .5, 1.3] })]));
+    l.position.set(x, .28, z); g.add(l); return l; });
+  return { g, m: body, legs };
 }
 
 function makeFox() {
@@ -470,7 +482,8 @@ export async function run(api) {
 
     if (pipMode === 'waiting') { PIP.g.position.z += dz; PIP.g.position.y = Math.abs(Math.sin(t * 5)) * .12; if (PIP.g.position.z > -4.2) target = 0; }
     if (pipMode === 'running') { const rp = t * Math.max(speed, 3) * 1.8;
-      PIP.g.position.set(3.35, (speed > .5 ? Math.abs(Math.sin(rp)) * .16 : 0), -.6 + Math.sin(t * .7) * .4); PIP.m.rotation.z = speed > .5 ? Math.sin(rp) * .08 : 0; }
+      PIP.g.position.set(3.35, (speed > .5 ? Math.abs(Math.sin(rp)) * .16 : 0), -.6 + Math.sin(t * .7) * .4); PIP.m.rotation.z = speed > .5 ? Math.sin(rp) * .06 : 0;
+      PIP.legs.forEach((l, i) => l.rotation.x = speed > .5 ? Math.sin(rp * 1.2 + (i % 2 ? PI : 0) + (i > 1 ? PI : 0)) * .7 : 0); }
     if (!finished && !paused) { spawnZ += dz; while (spawnZ > -60) { spawnZ -= 6 + Math.random() * 4; spawn(spawnZ); } }
     renderer.render(scene, cam);
     raf = requestAnimationFrame(frame);
@@ -522,3 +535,4 @@ export async function run(api) {
   setTimeout(() => host.classList.remove('hints'), 4000);
   const faster = setInterval(() => { if (!alive()) return clearInterval(faster); if (!finished && !paused && target > 0) target = Math.min(10, target + .25); }, 8000);
 }
+export { makePip };
