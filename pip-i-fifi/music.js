@@ -7,7 +7,7 @@
 'use strict';
 const SEMI = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const hz = n => { const m = /^([A-G])(#|b)?(\d)$/.exec(n); const s = SEMI[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0); return 440 * Math.pow(2, (s + 12 * (+m[3] + 1) - 69) / 12); };
-const CH = { C: ['C', 'E', 'G'], F: ['F', 'A', 'C'], G: ['G', 'B', 'D'], Am: ['A', 'C', 'E'], D: ['D', 'F#', 'A'] };
+const CH = { Em: ['E', 'G', 'B'], C: ['C', 'E', 'G'], F: ['F', 'A', 'C'], G: ['G', 'B', 'D'], Am: ['A', 'C', 'E'], D: ['D', 'F#', 'A'] };
 
 /* ---------- instruments ---------- */
 function env(c, out, t, peak, decay, attack = 0.004) {
@@ -220,6 +220,56 @@ const MENU = {
   }
 };
 
+
+/* Forest run: bouncy skipping tune with birds tweeting, 116 bpm, 16 bars, loops (original) */
+function bird(c, out, t, v) {                       // "tweet-tweet": two quick rising whistles
+  [0, .13].forEach((d, i) => {
+    const o = c.createOscillator(); o.type = 'sine';
+    const f = 2500 + Math.random() * 500 + i * 250;
+    o.frequency.setValueAtTime(f, t + d); o.frequency.exponentialRampToValueAtTime(f * 1.45, t + d + .07);
+    o.connect(env(c, out, t + d, v, .08, .006)); o.start(t + d); o.stop(t + d + .1);
+  });
+}
+function woodblock(c, out, t, v) {
+  const o = c.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(1250, t); o.frequency.exponentialRampToValueAtTime(900, t + .04);
+  o.connect(env(c, out, t, v, .06, .001)); o.start(t); o.stop(t + .08);
+}
+const FOREST = {
+  bpm: 116, bars: 16, loop: true,
+  chords: ['G', 'Em', 'C', 'D', 'G', 'Em', 'C', 'D', 'C', 'G', 'Am', 'D', 'G', 'C', 'D', 'G'],
+  melody: mel([
+    [['B4', .5], ['D5', .5], ['G5', 1], ['D5', 1], ['B4', 1]],
+    [['E5', 1], ['G5', 1], ['B5', 2]],
+    [['A5', .5], ['G5', .5], ['E5', 1], ['C5', 1], ['E5', 1]],
+    [['D5', 2], ['F#5', 1], ['A5', 1]],
+    [['B5', 1], ['A5', .5], ['G5', .5], ['D5', 1], ['G5', 1]],
+    [['E5', .5], ['F#5', .5], ['G5', 1], ['B4', 2]],
+    [['C5', 1], ['E5', 1], ['A5', 1], ['G5', 1]],
+    [['F#5', 2], ['D5', 1], [null, 1]],
+    [['E5', 1], ['G5', 1], ['C6', 1], ['B5', 1]],
+    [['D6', 1], ['B5', 1], ['G5', 2]],
+    [['A5', .5], ['B5', .5], ['C6', 1], ['A5', 1], ['E5', 1]],
+    [['F#5', 1], ['A5', 1], ['D6', 2]],
+    [['B5', .5], ['A5', .5], ['G5', 1], ['B5', 1], ['D6', 1]],
+    [['E6', 1], ['C6', 1], ['A5', 2]],
+    [['D6', .5], ['C6', .5], ['B5', .5], ['A5', .5], ['F#5', 1], ['A5', 1]],
+    [['G5', 3], [null, 1]]
+  ]),
+  play(c, out, b) {
+    this.melody.forEach(([bar, beat, n]) => { const t = (bar * 4 + beat) * b; marimba(c, out, t, hz(n), .4); if (beat === 0 && bar % 2 === 0) glock(c, out, t, hz(n) * 2, .1); });
+    this.chords.forEach((ch, bar) => {
+      const [r, third, fifth] = CH[ch], t0 = bar * 4 * b;
+      bass(c, out, t0, hz(r + '3'), .34, b * .8); bass(c, out, t0 + b, hz(fifth + '2'), .26, b * .7);
+      bass(c, out, t0 + 2 * b, hz(r + '3'), .3, b * .8); bass(c, out, t0 + 3 * b, hz(fifth + '2'), .24, b * .7);
+      [0, 1, 2, 3].forEach(k => { const t = t0 + (k + .5) * b; [r, third, fifth].forEach(n => marimba(c, out, t, hz(n + '4'), .045)); shaker(c, out, t, .05); });
+      [0, 2].forEach(k => boop(c, out, t0 + k * b, .3));
+      if (bar % 2 === 1) woodblock(c, out, t0 + 3.5 * b, .12);
+      if (bar % 4 === 1) bird(c, out, t0 + 2.6 * b, .05);
+      if (bar % 4 === 3) bird(c, out, t0 + .7 * b, .04);
+    });
+  }
+};
+
 /* ---------- render a song into an AudioBuffer ---------- */
 const RATE = 24000;
 function render(song) {
@@ -245,7 +295,7 @@ function render(song) {
 }
 
 /* ---------- player ---------- */
-const SONGS = { walk: WALK, menu: MENU, snow: SNOW, sun: SUN, train: TRAIN };
+const SONGS = { walk: WALK, menu: MENU, snow: SNOW, sun: SUN, train: TRAIN, forest: FOREST };
 window.Music = {
   on: true, getCtx: () => null, songs: {}, ready: null,
   src: null, g: null, cur: null, base: 0, ducked: false, undo: 0,
