@@ -10,9 +10,14 @@
    all the trees / rocks / stumps along the path are InstancedMesh (one draw call per kind).
    ===================================================================== */
 import * as THREE from './vendor/three.module.min.js';
+import { GLTFLoader } from './vendor/GLTFLoader.js';
+/* Fifi's model: "Running Fox" by Google Data Arts Team (CC BY) — models/fox.glb, with its run animation.
+   Until it has loaded (or if it ever fails), the fox made from simple shapes below is shown. */
+const FOX_URL = './models/fox.glb';
+const FOX_FRONT = 1;        // which way the model's nose points along z (+1 / -1); the game runs towards -z
 
 const LANES = [-2.1, 0, 2.1];
-const GOAL = 12;                       // items for a full basket
+const GOALS = { grzybek: 20, jagody: 30 };   // what fills the basket; acorns and strawberries are little bonuses
 const ITEMS = {
   grzybek: { e: '🍄', pl: 'Grzybek!', en: 'A mushroom!' },
   jagody:  { e: '🫐', pl: 'Jagody!',  en: 'Blueberries!' },
@@ -22,7 +27,7 @@ const ITEMS = {
 const C = {
   fox: 0xE8742C, foxDark: 0xC75E1F, white: 0xF6EFE6, black: 0x2A211C, ear: 0x3A2A22,
   trunk: 0x8A5A35, pine1: 0x3DB34F, pine2: 0x34A146, pine3: 0x48BF58,
-  ground: 0x3F7D48, ground2: 0x37713F, path: 0x7A6A4A, path2: 0x6E5F41,
+  ground: 0x3F7D48, path: 0x86704C, pathEdge: 0x5F7542,
   log: 0x9A6338, logIn: 0xC89A64, logDark: 0x4A3020, stone: 0x77777F, stone2: 0x8A8A93,
   cap: 0xD9433B, stem: 0xF3E6CF, berry: 0x4656B8, acorn: 0xB07438, acornCap: 0x6E4A2C,
   straw: 0xE8424A, leaf: 0x3FAE4F, grass: 0x4FB04A, grass2: 0x62C25A, daisy: 0xFFFFFF, daisyC: 0xFFD23C, pinkF: 0xF07CB8,
@@ -183,28 +188,15 @@ export async function run(api) {
   /* ground: 4 faceted tiles that leapfrog forward. Each tile carries its own trees, rocks and stumps,
      so their shadows can be painted into the tile's texture once, at the start. */
   const TILE = 30, TW = 70, NT = 4, tiles = [];
-  const tileGeo = seed => {
-    const g = new THREE.PlaneGeometry(TW, TILE, 35, 15); g.rotateX(-PI / 2);
-    const pos = g.attributes.position; let k = seed;
-    const rnd = () => ((k = (k * 16807) % 2147483647) / 2147483647 - .5);
-    for (let i = 0; i < pos.count; i++) { const x = pos.getX(i), z = pos.getZ(i), edge = Math.abs(z) > TILE / 2 - .01, onPath = Math.abs(x) < 3.6;
-      pos.setY(i, edge ? 0 : rnd() * (onPath ? .06 : .3)); }
-    const ng = g.toNonIndexed(), p = ng.attributes.position, col = new Float32Array(p.count * 3), c = new THREE.Color();
-    for (let t = 0; t < p.count; t += 3) {
-      const cx = (p.getX(t) + p.getX(t + 1) + p.getX(t + 2)) / 3, r = rnd();
-      c.setHex(Math.abs(cx) < 3.1 ? (r > 0 ? C.path : C.path2) : Math.abs(cx) < 3.9 ? (r > 0 ? C.path2 : C.ground2) : (r > .1 ? C.ground : C.ground2));
-      for (let v = 0; v < 3; v++) col.set([c.r, c.g, c.b], (t + v) * 3);
-    }
-    ng.setAttribute('color', new THREE.BufferAttribute(col, 3)); ng.computeVertexNormals(); g.dispose(); return ng;
-  };
+  const tileGeo = () => { const g = new THREE.PlaneGeometry(TW, TILE, 1, 1); g.rotateX(-PI / 2); return g; };
 
   /* scenery kinds; shade = how its shadow is drawn: tiers [radius, height of the disc, height of the tip], trunk height */
   const KINDS = [
-    { geo: GEO.pine(1, 1), n: 15, side: [4.6, 22], sc: [.9, 1.4], shade: { trunk: 1.6, tiers: [0, 1, 2, 3].map(i => [1.45 - i * .28, 1.5 + i * .95, 1.5 + i * .95 + 1.55 - i * .12]) } },
-    { geo: GEO.pine(1.25, 2), n: 13, side: [5.5, 24], sc: [.9, 1.3], shade: { trunk: 2, tiers: [0, 1, 2, 3].map(i => [1.45 - i * .28, 1.25 * (1.5 + i * .95), 1.25 * (1.5 + i * .95) + 1.55 - i * .12]) } },
-    { geo: GEO.stump(), n: 2, side: [4, 9], sc: [.8, 1.2], shade: { tiers: [[.48, 0, .3], [.45, .6, .6]] } },
-    { geo: GEO.rock(3), n: 2, side: [4, 10], sc: [.7, 1.6], shade: { tiers: [[.7, 0, .25], [.55, .3, .5]] } },
-    { geo: GEO.rock(4, 1.3), n: 2, side: [5, 12], sc: [.8, 1.5], shade: { tiers: [[.9, 0, .35], [.7, .4, .65]] } },
+    { geo: GEO.pine(1, 1), n: 24, side: [4.4, 22], sc: [.9, 1.4], shade: { trunk: 1.6, tiers: [0, 1, 2, 3].map(i => [1.45 - i * .28, 1.5 + i * .95, 1.5 + i * .95 + 1.55 - i * .12]) } },
+    { geo: GEO.pine(1.25, 2), n: 20, side: [5.2, 25], sc: [.9, 1.3], shade: { trunk: 2, tiers: [0, 1, 2, 3].map(i => [1.45 - i * .28, 1.25 * (1.5 + i * .95), 1.25 * (1.5 + i * .95) + 1.55 - i * .12]) } },
+    { geo: GEO.stump(), n: 4, side: [4, 10], sc: [.8, 1.2], shade: { tiers: [[.48, 0, .3], [.45, .6, .6]] } },
+    { geo: GEO.rock(3), n: 6, side: [3.9, 12], sc: [.7, 1.6], shade: { tiers: [[.7, 0, .25], [.55, .3, .5]] } },
+    { geo: GEO.rock(4, 1.3), n: 4, side: [5, 14], sc: [.8, 1.5], shade: { tiers: [[.9, 0, .35], [.7, .4, .65]] } },
     { geo: GEO.tuft(1), n: 10, side: [3.4, 8], sc: [.7, 1.3] },
     { geo: GEO.flowers(), n: 5, side: [3.6, 7], sc: [.8, 1.2] }
   ];
@@ -234,13 +226,17 @@ export async function run(api) {
       }); });
     });
     const c = document.createElement('canvas'); c.width = CW; c.height = CH; const y = c.getContext('2d');
-    y.fillStyle = '#fff'; y.fillRect(0, 0, CW, CH);
+    const hex = n => '#' + n.toString(16).padStart(6, '0');
+    y.fillStyle = hex(C.ground); y.fillRect(0, 0, CW, CH);                       // grass: one colour
+    const P0 = (TW / 2 - 3.3) * PX, PW = 6.6 * PX;
+    y.fillStyle = hex(C.pathEdge); y.fillRect(P0 - .35 * PX, 0, PW + .7 * PX, CH); // soft edge of the path
+    y.fillStyle = hex(C.path); y.fillRect(P0, 0, PW, CH);                          // path: one colour
     y.globalAlpha = .1; y.drawImage(sh, -1.5, -1.5); y.drawImage(sh, 1.5, 1.5);   // a hint of soft edge
     y.globalAlpha = .64; y.drawImage(sh, 0, 0);               // strong, even darkness (also where shadows overlap)
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
   };
   for (let i = 0; i < NT; i++) {
-    const m = new THREE.Mesh(tileGeo(11 + i * 31), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, map: bake(i) }));
+    const m = new THREE.Mesh(tileGeo(), new THREE.MeshLambertMaterial({ map: bake(i) }));
     m.position.z = 10 - TILE / 2 - i * TILE; scene.add(m); tiles.push(m);
   }
 
@@ -254,7 +250,24 @@ export async function run(api) {
   });
 
   /* Fifi */
-  const F = makeFox(); scene.add(F.g); const fBlob = blob(.55, .8); scene.add(fBlob);
+  const F = makeFox(); scene.add(F.g);
+  let mixer = null, foxRun = null, foxBlob = 1;
+  new GLTFLoader().load(FOX_URL, gl => {
+    if (!alive()) return;
+    const fox = gl.scene, box = new THREE.Box3();            // size from the base shape only (morph targets would inflate it)
+    fox.traverse(o => { if (o.isMesh) { const p = o.geometry.attributes.position; for (let i = 0; i < p.count; i++) box.expandByPoint(new THREE.Vector3(p.getX(i), p.getY(i), p.getZ(i))); } });
+    const size = box.getSize(new THREE.Vector3());
+    const k = 1.45 / size.y;                                  // about as tall as the shape fox (the Google fox is long and slim)
+    fox.scale.setScalar(k); fox.position.set(-(box.min.x + box.max.x) / 2 * k, -box.min.y * k, -(box.min.z + box.max.z) / 2 * k);
+    const holder = new THREE.Group(); holder.rotation.y = FOX_FRONT > 0 ? PI : 0; holder.add(fox);
+    fox.traverse(o => { if (!o.isMesh) return;
+      const c = o.geometry.attributes.color; if (c) { for (let i = 0; i < c.array.length; i++) c.array[i] = Math.min(1, c.array[i] * 1.35); c.needsUpdate = true; }   // its colours are a bit dark under our light
+      o.material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }); o.frustumCulled = false; });
+    foxBlob = .75;
+    F.body.visible = false; F.legs.forEach(l => l.visible = false);
+    F.body.parent.add(holder); F.model = holder;
+    if (gl.animations[0]) { mixer = new THREE.AnimationMixer(fox); foxRun = mixer.clipAction(gl.animations[0]); foxRun.play(); }
+  }, undefined, e => console.warn('fox model', e)); const fBlob = blob(.55, .8); scene.add(fBlob);
   let lane = 1, fx = 0, fy = 0, vy = 0, stumble = 0;
   cam.position.set(0, 3.3, 6.4); cam.lookAt(0, 1, -5);
 
@@ -264,9 +277,11 @@ export async function run(api) {
   const got = Object.fromEntries(Object.keys(ITEMS).map(k => [k, 0])), heardFirst = {};
   const PATHGEO = { log: GEO.log(), stump: GEO.stump(), stone: GEO.rock(7, 1.05) };
   Object.keys(ITEMS).forEach(k => PATHGEO[k] = GEO[k]());
+  const done = k => got[k] >= GOALS[k], allDone = () => Object.keys(GOALS).every(done);
   const drawHud = () => {
-    hud.innerHTML = `<div class="fr-basket">🧺 ${Array.from({ length: GOAL }, (_, i) => `<i class="${i < count ? 'on' : ''}"></i>`).join('')}</div>
-      <div class="fr-got">${Object.entries(got).filter(([, n]) => n).map(([k, n]) => `<span>${ITEMS[k].e}<b>${n}</b></span>`).join('')}</div>`;
+    hud.innerHTML = `<div class="fr-goals">${Object.entries(GOALS).map(([k, n]) => `<div class="fr-goal${done(k) ? ' full' : ''}"><span>${ITEMS[k].e}</span>
+        <div class="fr-bar"><i style="width:${Math.min(100, got[k] / n * 100)}%"></i></div><b>${Math.min(got[k], n)}/${n}</b></div>`).join('')}</div>
+      <div class="fr-got">${Object.entries(got).filter(([k, n]) => n && !GOALS[k]).map(([k, n]) => `<span>${ITEMS[k].e}<b>${n}</b></span>`).join('')}</div>`;
   };
   drawHud();
   const spawn = z => {
@@ -276,7 +291,9 @@ export async function run(api) {
       const b = blob(ob === 'log' ? .5 : .55, ob === 'log' ? 2 : 1.1); b.position.set(SHX * .25, .03, SHZ * .25); m.add(b);
       m.position.set(LANES[l], 0, z); if (ob !== 'log') m.rotation.y = Math.random() * 6; scene.add(m); things.push({ m, kind: ob, lane: l, z, item: false });
     } else {
-      const k = kinds[Math.floor(Math.random() * kinds.length)], n = Math.random() < .35 ? 2 : 1;
+      const need = Object.keys(GOALS).filter(q => !done(q)), r = Math.random();
+      const k = r < .18 ? (Math.random() < .5 ? 'zoladz' : 'poziomka') : need.length ? (need.length > 1 ? (r < .5 ? 'grzybek' : 'jagody') : need[0]) : kinds[0];
+      const n = k === 'jagody' ? 2 + Math.floor(Math.random() * 3) : k === 'grzybek' ? 1 + Math.floor(Math.random() * 3) : 1;   // berries come in little rows
       for (let i = 0; i < n; i++) { const m = mesh(PATHGEO[k]); m.add(blob(.3)); m.scale.setScalar(1.3); m.position.set(LANES[l], .15, z - i * 2.2); scene.add(m); things.push({ m, kind: k, lane: l, z: z - i * 2.2, item: true }); }
     }
   };
@@ -320,7 +337,7 @@ export async function run(api) {
     vy -= 20 * dt; fy = Math.max(0, fy + vy * dt); if (fy === 0) vy = Math.max(0, vy);
     const run = speed > .5 && fy === 0 ? 1 : 0, ph = t * Math.max(speed, 3) * 1.5;
     F.g.position.set(fx, fy + run * Math.abs(Math.sin(ph)) * .1, 0);
-    fBlob.position.set(fx + .1, .04, -.05); fBlob.scale.set(.8 * (1 - Math.min(.5, fy * .25)), 1 - Math.min(.5, fy * .25), 1);
+    fBlob.position.set(fx + .1, .04, -.05); fBlob.scale.set(.8 * foxBlob * (1 - Math.min(.5, fy * .25)), foxBlob * 1.6 * (1 - Math.min(.5, fy * .25)), 1);
     F.g.rotation.z = (LANES[lane] - fx) * -.15; F.g.rotation.y = (LANES[lane] - fx) * .25;
     F.legs[0].rotation.x = F.legs[1].rotation.x = run * Math.sin(ph) * .8 + (fy > 0 ? -.6 : 0);
     F.legs[2].rotation.x = F.legs[3].rotation.x = run * Math.sin(ph + PI * .8) * .8 + (fy > 0 ? .6 : 0);
@@ -328,6 +345,10 @@ export async function run(api) {
     F.body.rotation.x = run * Math.sin(ph) * .05; F.head.rotation.x = run * Math.sin(ph + 1) * .06;
     F.tail.rotation.y = Math.sin(t * 5) * .3; F.tail.rotation.x = .35 + run * Math.sin(ph) * .12;
     if (stumble > 0) { stumble -= dt; F.body.rotation.z = Math.sin(stumble * 14) * .25; } else F.body.rotation.z = 0;
+    if (F.model) {                                            // the Google fox: its own run cycle, speed follows Fifi's speed
+      F.model.rotation.z = F.body.rotation.z; F.model.rotation.x = fy > 0 ? -.15 : 0;
+      if (mixer) mixer.update(speed > .5 ? dt * Math.min(1.3, Math.max(.45, speed / 8)) * (fy > 0 ? .4 : 1) : 0);
+    }
     cam.position.x += (fx * .45 - cam.position.x) * Math.min(1, dt * 3); cam.lookAt(cam.position.x * .6, 1, -5);
 
     for (let i = things.length - 1; i >= 0; i--) {
@@ -340,7 +361,10 @@ export async function run(api) {
           const it = ITEMS[o.kind];
           if (!heardFirst[o.kind] && !S.plOnly) { heardFirst[o.kind] = 1; talk([['pip', 'pl', it.pl], ['fifi', 'en', it.en]]); }
           else talk([['pip', 'pl', it.pl]]);
-          if (count >= GOAL) finish();
+          if (GOALS[o.kind] && got[o.kind] === GOALS[o.kind]) {              // one kind complete
+            setTimeout(() => talk(o.kind === 'grzybek' ? [['pip', 'pl', 'Wszystkie grzybki!'], ['fifi', 'en', 'All the mushrooms!']] : [['pip', 'pl', 'Wszystkie jagody!'], ['fifi', 'en', 'All the blueberries!']]), 900);
+          }
+          if (allDone()) finish();
           continue;
         } else if (fy < (o.kind === 'log' ? .55 : .75)) {
           o.done = true; stumble = .6; speed = 2; sfx('plop');

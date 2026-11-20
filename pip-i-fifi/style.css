@@ -535,3 +535,12 @@ body.sunny #screen::before { content: ''; position: fixed; inset: 0; background:
 @keyframes hintPulse { 50% { transform: scale(1.15); } }
 @keyframes hintPulseM { 50% { transform: translateX(-50%) scale(1.15); } }
 .fr-load { position: absolute; inset: 0; display: grid; place-items: center; font-size: 18vmin; animation: hintPulse 1s ease-in-out infinite; }
+.fr-credit { position: absolute; left: 1.5vmin; bottom: 1vmin; font-size: 1.6vmin; color: rgba(255,255,255,.75); text-shadow: 0 1px 2px rgba(0,0,0,.4); pointer-events: none; }
+.fr-goals { display: flex; gap: 2vmin; }
+.fr-goal { display: flex; align-items: center; gap: 1vmin; background: rgba(255,255,255,.88); border-radius: 5vmin; padding: .8vmin 2vmin .8vmin 1.4vmin; box-shadow: 0 .6vmin 1.5vmin rgba(0,0,0,.12); }
+.fr-goal span { font-size: 5vmin; }
+.fr-goal b { font-size: 3.2vmin; color: #5A3E8C; min-width: 7vmin; }
+.fr-bar { width: 18vmin; height: 2.2vmin; border-radius: 2vmin; background: #E8DDCE; overflow: hidden; }
+.fr-bar i { display: block; height: 100%; background: #4CC373; border-radius: 2vmin; transition: width .3s; }
+.fr-goal.full { animation: hintPulse 1s ease-in-out 3; }
+.fr-goal.full .fr-bar i { background: #FFC93C; }

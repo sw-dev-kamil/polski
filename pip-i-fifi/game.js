@@ -1594,7 +1594,7 @@ function playEpisode(ep) {
 /* ---------- 🌲 forest run (3D) — the game itself lives in forest.js, loaded only when needed ---------- */
 function forestGame() {
   const my = show(`<div class="forest" id="fr"><canvas id="frc"></canvas><div class="fr-hud" id="frh"></div>
-    <div class="fr-hint l">👈</div><div class="fr-hint m">⬆️</div><div class="fr-hint r">👉</div><div class="fr-load">🌲</div></div>${topbar(0, 0)}`);
+    <div class="fr-hint l">👈</div><div class="fr-hint m">⬆️</div><div class="fr-hint r">👉</div><div class="fr-load">🌲</div><div class="fr-credit">Fox model: "Running Fox" by Google Data Arts Team (CC BY)</div></div>${topbar(0, 0)}`);
   bindHome(); $('#again').onclick = () => forestGame();
   import('./forest.js').then(m => {
     if (my !== tk) return; $('.fr-load').remove();

@@ -1143,5 +1143,9 @@
 {"id":"97edf1e8","lang":"en","text":"Help me fill the basket!"},
 {"id":"0a755ec2","lang":"en","text":"Tap here and here to move me."},
 {"id":"adf72e05","lang":"en","text":"Tap the middle to jump!"},
-{"id":"616ba2a6","lang":"en","text":"Our basket is full!"}
+{"id":"616ba2a6","lang":"en","text":"Our basket is full!"},
+{"id":"b1fb866b","lang":"pl","text":"Wszystkie grzybki!"},
+{"id":"edba2d61","lang":"pl","text":"Wszystkie jagody!"},
+{"id":"f6f9e21c","lang":"en","text":"All the mushrooms!"},
+{"id":"991ea501","lang":"en","text":"All the blueberries!"}
 ]
