@@ -35,13 +35,13 @@ async def one(l, sem):
     v, pitch, rate = VOICE[l.get('v') or l['lang']]
     path = os.path.join(out, l['id'] + '.mp3')
     async with sem:
-        for attempt in range(3):
+        for attempt in range(4):
             try:
-                await edge_tts.Communicate(l['text'], v, pitch=pitch, rate=rate).save(path + '.part')
+                await asyncio.wait_for(edge_tts.Communicate(l['text'], v, pitch=pitch, rate=rate).save(path + '.part'), 30)   # a stuck line is retried
                 os.replace(path + '.part', path); done += 1
                 print(f"  [{done}/{len(todo)}] {l.get('v') or l['lang']}: {l['text']}"); return
-            except Exception as e:
-                err = e; await asyncio.sleep(2 + attempt * 3)
+            except (Exception, asyncio.TimeoutError) as e:
+                err = e or 'timed out'; await asyncio.sleep(2 + attempt * 3)
         failed.append(l); print(f"  !! failed: {l['text']} ({err})")
 async def main():
     sem = asyncio.Semaphore(4)
