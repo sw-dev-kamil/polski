@@ -28,7 +28,7 @@ const PRAISE = ['Bravo! 👏', 'Corect! ✨', 'Super! 🎉', 'Exact! 💪', 'Foa
 
 /* ---------- storage ---------- */
 const KEY = 'polski.v1';
-const DEFAULTS = { done: {}, srs: {}, streak: { count: 0, last: null }, settings: { slow: false, tr: true }, stats: { spoken: 0 } };
+const DEFAULTS = { done: {}, srs: {}, streak: { count: 0, last: null }, settings: { slow: false, tr: true, rec: true }, stats: { spoken: 0 } };
 let S = load();
 function load() {
   let saved = {};
@@ -105,11 +105,64 @@ function pickVoice() {
 }
 if (hasTTS) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
 
-function speak(text, slow) {
+/* ---------- recorded voices (made on Kamil's Mac, see make-voices.sh) ----------
+   speak() plays audio/<id>.mp3 when it exists, otherwise the iPhone's own voice. */
+let AC = null;
+function unlockAudio() { try { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); } catch (e) {} }
+['touchstart', 'pointerdown', 'click'].forEach(ev => document.addEventListener(ev, unlockAudio, { capture: true, passive: true }));
+const REC = { have: new Set(), raw: new Map(), buf: new Map(), src: null, stop: null };
+fetch('audio/index.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : []).then(a => { REC.have = new Set(a); }).catch(() => {});
+function recRaw(id) {
+  if (REC.raw.has(id)) return Promise.resolve(REC.raw.get(id));
+  return fetch('audio/' + id + '.mp3').then(r => r.ok ? r.arrayBuffer() : null).then(x => { if (x) REC.raw.set(id, x); return x; }).catch(() => null);
+}
+function recBuf(id) {
+  if (REC.buf.has(id)) return Promise.resolve(REC.buf.get(id));
+  return recRaw(id).then(raw => !raw || !AC ? null : new Promise(res => {
+    try { AC.decodeAudioData(raw.slice(0), b => { REC.buf.set(id, b); res(b); }, () => res(null)); } catch (e) { res(null); }
+  }));
+}
+function recStop() {
+  if (REC.src) { const s = REC.src; REC.src = null; try { s.stop(); } catch (e) {} }
+  if (REC.stop) { const f = REC.stop; REC.stop = null; f(); }
+}
+async function recPlay(id) {
+  const b = await recBuf(id);
+  if (!b || !AC) return false;
+  recStop();
+  return new Promise(res => {
+    const s = AC.createBufferSource(); s.buffer = b; s.connect(AC.destination);
+    s.onended = () => { if (REC.src === s) { REC.src = null; REC.stop = null; res(true); } };
+    REC.src = s; REC.stop = () => res(true);
+    s.start();
+  });
+}
+function useRecorded() { return S.settings.rec !== false && REC.have.size > 0; }
+function recIdFor(text, slow, who) { return lineId(voiceKey(who) + ((slow || S.settings.slow) ? '-slow' : ''), cleanSpeech(text)); }
+function prefetchLesson(les) {               // load today's audio in the background so it plays instantly
+  if (!useRecorded()) return;
+  const ids = [];
+  les.words.forEach(w => ids.push(recIdFor(w.pl)));
+  les.dialogue.lines.forEach(ln => ids.push(recIdFor(ln.pl, false, ln.who)));
+  (les.pronounce || []).forEach(p => ids.push(recIdFor(p)));
+  ids.filter(id => REC.have.has(id)).forEach(id => recRaw(id));
+}
+
+function speak(text, slow, who) {
+  if (useRecorded() && AC) {
+    const id = recIdFor(text, slow, who);
+    if (REC.have.has(id)) {
+      if (hasTTS) speechSynthesis.cancel();
+      return recPlay(id).then(ok => ok ? undefined : speakTTS(text, slow));
+    }
+  }
+  return speakTTS(text, slow);
+}
+function speakTTS(text, slow) {
   return new Promise(res => {
     if (!hasTTS) return res();
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(String(text).replace(/…/g, ', '));
+    recStop(); speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(cleanSpeech(text));
     u.lang = 'pl-PL';
     if (plVoice) u.voice = plVoice;
     u.rate = slow ? 0.55 : (S.settings.slow ? 0.78 : 0.92);
@@ -119,7 +172,7 @@ function speak(text, slow) {
     setTimeout(fin, 4000 + text.length * 180);
   });
 }
-function stopSpeaking() { if (hasTTS) speechSynthesis.cancel(); }
+function stopSpeaking() { recStop(); if (hasTTS) speechSynthesis.cancel(); }
 
 /* =====================================================================
    SPEECH: recognition (pronunciation check)
@@ -467,17 +520,20 @@ function renderSettings() {
         <div class="seg"><button data-s="0" class="${S.settings.slow ? '' : 'on'}">Normal</button><button data-s="1" class="${S.settings.slow ? 'on' : ''}">Mai rar</button></div></div>
       <div class="setting"><div><b>Traducere în dialoguri</b></div>
         <div class="seg"><button data-t="1" class="${S.settings.tr ? 'on' : ''}">Da</button><button data-t="0" class="${S.settings.tr ? '' : 'on'}">Nu</button></div></div>
-      <div class="setting"><div><b>Vocea</b><div class="muted small">${plVoice ? plVoice.name : 'voce implicită'}</div></div>
+      <div class="setting"><div><b>Voce naturală</b><div class="muted small">${REC.have.size ? REC.have.size + ' fraze înregistrate' : 'încă nu există înregistrări'}</div></div>
+        <div class="seg"><button data-rv="1" class="${S.settings.rec !== false ? 'on' : ''}">Da</button><button data-rv="0" class="${S.settings.rec === false ? 'on' : ''}">Nu</button></div></div>
+      <div class="setting"><div><b>Vocea</b><div class="muted small">${useRecorded() ? 'Zofia (înregistrată)' : (plVoice ? plVoice.name : 'voce implicită')}</div></div>
         <button class="btn soft" id="test" style="height:40px">Test</button></div>
       <div class="setting"><div><b>Verificare pronunție</b><div class="muted small">${SR && !srBroken ? 'disponibilă' : 'înregistrare și comparare'}</div></div></div>
     </div>
     <div class="card"><div class="setting"><div><b>Șterge progresul</b><div class="muted small">începi de la Ziua 1</div></div>
       <button class="btn ghost" id="reset" style="height:40px;color:var(--bad)">Șterge</button></div></div>
-    <p class="muted small" style="text-align:center">Polski · v3 · progresul e salvat doar pe acest telefon</p>
+    <p class="muted small" style="text-align:center">Polski · v4 · progresul e salvat doar pe acest telefon</p>
   </div>`;
   $('#back').onclick = () => setTab('home');
   $$('[data-s]').forEach(b => b.onclick = () => { S.settings.slow = b.dataset.s === '1'; save(); renderSettings(); });
   $$('[data-t]').forEach(b => b.onclick = () => { S.settings.tr = b.dataset.t === '1'; save(); renderSettings(); });
+  $$('[data-rv]').forEach(b => b.onclick = () => { S.settings.rec = b.dataset.rv === '1'; save(); renderSettings(); });
   $('#test').onclick = () => speak('Dzień dobry! Jak się masz?');
   let armed = false;
   $('#reset').onclick = e => {
@@ -497,6 +553,7 @@ function startLesson(day) {
   steps.push({ type: 'learn' }, { type: 'quiz' }, { type: 'dialogue' }, { type: 'pronounce' });
   if (les.grammar) steps.push({ type: 'grammar' });
   L = { les, steps, si: 0, mode: 'lesson', scores: [] };
+  prefetchLesson(les);
   enterLesson();
 }
 function startReview() {
@@ -629,14 +686,14 @@ const STEPS = {
         if (my !== token) return;
         $$('.bubble').forEach(x => x.classList.remove('playing'));
         b.classList.add('playing'); b.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        await speak(d.lines[+b.dataset.i].pl, slow);
+        await speak(d.lines[+b.dataset.i].pl, slow, d.lines[+b.dataset.i].who);
         await new Promise(r => setTimeout(r, 350));
       }
       $$('.bubble').forEach(x => x.classList.remove('playing'));
     };
     $('#all').onclick = () => playAll(false);
     $('#allslow').onclick = () => playAll(true);
-    $$('.bubble').forEach(b => b.onclick = () => { token++; $$('.bubble').forEach(x => x.classList.remove('playing')); b.classList.add('playing'); speak(d.lines[+b.dataset.i].pl).then(() => b.classList.remove('playing')); });
+    $$('.bubble').forEach(b => b.onclick = () => { token++; $$('.bubble').forEach(x => x.classList.remove('playing')); b.classList.add('playing'); speak(d.lines[+b.dataset.i].pl, false, d.lines[+b.dataset.i].who).then(() => b.classList.remove('playing')); });
     $('#go').onclick = () => { st.phase = 'role'; st.ri = 0; runStepKeep(st); };
   },
   role(st) {
@@ -650,8 +707,8 @@ const STEPS = {
         <div class="bubble playing"><div class="who">${ln.who}</div><div class="pl">${ln.pl}</div>${S.settings.tr ? `<div class="tr">${ln.ro}</div>` : ''}</div></div>
         <div class="footer-actions"><div class="btn-row"><button class="btn ghost" id="rep">↻ Din nou</button><button class="btn" id="nx">Continuă</button></div></div>`, frac);
       const my = token;
-      setTimeout(() => { if (my === token) speak(ln.pl); }, 300);
-      $('#rep').onclick = () => speak(ln.pl);
+      setTimeout(() => { if (my === token) speak(ln.pl, false, ln.who); }, 300);
+      $('#rep').onclick = () => speak(ln.pl, false, ln.who);
       $('#nx').onclick = () => { st.ri++; runStepKeep(st); };
     } else {
       shell('Rolul tău', `<h2 style="margin-top:0">${d.title}</h2><div class="chat">${hist}</div>
