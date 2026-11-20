@@ -537,6 +537,7 @@ const TILES = [
   { id: 'bed',       e: '🌙', en: 'Good night',    pl: 'Dobranoc',     s: '#D9D2F2' },
   { id: 'teacher',   e: '👩‍🏫', en: 'Hello, teacher', pl: 'Dzień dobry, Pani!', s: '#F7D0D9' },
   { id: 'arts',      e: '🎨', en: 'Arts and crafts', pl: 'Zajęcia',    s: '#FCE3B0' },
+  { id: 'puzzle',    e: '🧩', en: 'Puzzles',       pl: 'Układanki',    s: '#FFE3B3' },
   { id: 'pipwalk',   e: '🦔', en: "Pip's walk",   pl: 'Spacer z Pipem', s: '#E8D9C4' },
   { id: 'forest',    e: '🌲', en: 'Forest run',    pl: 'W lesie',      s: '#CFEBC4' },
   { id: 'playground',e: '🛝', en: 'Playground',    pl: 'Plac zabaw',   s: '#CFEBC4' },
@@ -545,7 +546,7 @@ const TILES = [
 ];
 /* places on the main screen: each has its own scene and its own tiles (⭐ stickers everywhere) */
 const WORLDS = [
-  { id: 'home',     e: '🏠', pl: 'W domu',         en: 'At home',          tiles: ['tv', 'bake', 'teddy', 'food', 'bath', 'bed', 'stickers'] },
+  { id: 'home',     e: '🏠', pl: 'W domu',         en: 'At home',          tiles: ['tv', 'puzzle', 'bake', 'teddy', 'food', 'bath', 'bed', 'stickers'] },
   { id: 'nursery',  e: '🏫', pl: 'W przedszkolu',  en: 'At nursery',       tiles: ['tv', 'teacher', 'friends', 'needs', 'arts', 'dress', 'songs', 'stickers'] },
   { id: 'outside',  e: '🌳', pl: 'Na dworze',      en: 'Playing outside',  tiles: ['forest', 'pipwalk', 'playground', 'colours', 'animals', 'count', 'stickers'] },
   { id: 'shop',     e: '🛒', pl: 'W sklepie',      en: 'At the shop',      tiles: ['shopping', 'fruit', 'veg', 'stickers'] },
@@ -631,7 +632,7 @@ async function openTile(id, el) {
   hush(); const my = tk; M.stop(1.2);
   el.style.transform = 'scale(1.12)';
   const go = { colours: () => pickGame('colours'), animals: () => pickGame('animals'), count: countGame,
-    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), dress: () => seasonMenu(), bake: bakeGame, teddy: teddyGame, tv: episodesMenu, forest: forestGame, pipwalk: walkGame, fruit: () => pickGame('fruit'), veg: () => pickGame('veg'), shopping: shopGame, songs: songsMenu, stickers: stickerBook }[id]
+    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), dress: () => seasonMenu(), bake: bakeGame, teddy: teddyGame, tv: episodesMenu, forest: forestGame, pipwalk: walkGame, puzzle: puzzleMenu, fruit: () => pickGame('fruit'), veg: () => pickGame('veg'), shopping: shopGame, songs: songsMenu, stickers: stickerBook }[id]
     || (window.TOPICS[id] && (() => phraseGame(window.TOPICS[id])));
   await Promise.race([seq([['fifi', 'en', 'Yay! ' + t.en + '!'], ['pip', 'pl', 'Hura! ' + t.pl + '!']], my), wait(3200)]);
   opening = false;
@@ -1682,6 +1683,28 @@ function walkGame() {
     if (my !== tk) return; $('.fr-load').remove();
     m.run({ say, seq: lines => seq(lines, my), sfx, M, wait, S, KID, alive: () => my === tk && !!$('#wkc'), confetti: confettiSmall, reward, again: walkGame });
   }).catch(e => { $('.fr-load').textContent = '😕'; console.error(e); });
+}
+
+/* ---------- 🧩 jigsaw puzzles — puzzle.js ---------- */
+function puzzleMenu() {
+  import('./puzzle.js').then(P => {
+    let pic = P.PICTURES[(S.pzPic || 0) % P.PICTURES.length];
+    const my = show(`${topbar(0, 0)}<div class="pz-menu">
+      <div class="pz-pics">${P.PICTURES.map((p, i) => `<img class="pz-thumb${p === pic ? ' on' : ''}" data-i="${i}" src="${p.thumb}" alt="">`).join('')}</div>
+      <div class="pz-sizes">${P.SIZES.map((z, i) => `<button class="tile pz-size" data-i="${i}" style="--s:#FFE3B3">
+        <span class="pz-grid" style="grid-template-columns:repeat(${z.c},1fr)">${'<i></i>'.repeat(z.n)}</span><span class="l">${z.n}</span></button>`).join('')}</div></div>${chars()}`);
+    bindHome();
+    $$('.pz-thumb').forEach(t => t.onclick = () => { unlockAudio(); pic = P.PICTURES[+t.dataset.i]; S.pzPic = +t.dataset.i; save();
+      $$('.pz-thumb').forEach(o => o.classList.toggle('on', o === t)); sfx('pop'); });
+    $$('.pz-size').forEach(b => b.onclick = () => { unlockAudio(); puzzleGame(P, pic, P.SIZES[+b.dataset.i]); });
+    seq([['pip', 'pl', 'Ile kawałków?'], ...(S.plOnly ? [] : [['fifi', 'en', 'How many pieces?']])], my);
+  }).catch(e => console.error(e));
+}
+function puzzleGame(P, pic, size) {
+  const my = show(`<div class="pz" id="pz"></div>${topbar(0, 0)}`);
+  bindHome(); $('#again').onclick = () => puzzleGame(P, pic, size);
+  M.play('menu', .14);
+  P.run({ say, seq: lines => seq(lines, my), sfx, M, wait, S, pic, size, alive: () => my === tk && !!$('#pz'), confetti: confettiSmall, reward, again: () => puzzleGame(P, pic, size) });
 }
 
 /* ---------- songs: list + song screen with an animation ---------- */
