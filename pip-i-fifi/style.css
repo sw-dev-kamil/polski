@@ -550,3 +550,33 @@ body.sunny #screen::before { content: ''; position: fixed; inset: 0; background:
 .wk-card span { opacity: .28; filter: grayscale(1); transition: all .35s cubic-bezier(.3,1.6,.5,1); }
 .wk-card span.on { opacity: 1; filter: none; transform: scale(1.2); }
 .wk-card b { font-size: 5vmin; color: #5A3E8C; }
+/* nursery-routine episodes: tap spot, water, bubbles, washing/eating mimes, table in front */
+.ep-front { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.ep-front svg { position: absolute; inset: 0; width: 1600px; height: 900px; }
+.ep-spot { position: absolute; width: 170px; height: 170px; margin: -85px 0 0 -85px; border-radius: 50%; z-index: 6; cursor: pointer;
+  border: 10px solid rgba(255,201,60,.95); box-shadow: 0 0 0 10px rgba(255,201,60,.35), 0 0 40px rgba(255,220,120,.9); animation: spotPulse 1s ease-in-out infinite; }
+.ep-spot::after { content: '👆'; position: absolute; left: 60%; top: 55%; font-size: 70px; animation: spotTap 1s ease-in-out infinite; }
+.ep-spot.hit { animation: spotHit .45s ease-out forwards; }
+@keyframes spotPulse { 50% { transform: scale(1.12); } }
+@keyframes spotTap { 50% { transform: translate(-8px, -12px); } }
+@keyframes spotHit { to { transform: scale(1.8); opacity: 0; } }
+.ep-water { position: absolute; width: 16px; height: 0; z-index: 2; border-radius: 8px;
+  background: linear-gradient(#9FDCFF, #5BB6F0); animation: waterRun 2.4s ease-in-out forwards; }
+@keyframes waterRun { 10% { height: 70px; } 85% { height: 70px; opacity: 1; } 100% { height: 70px; opacity: 0; } }
+.ep-bubble { position: absolute; width: 26px; height: 26px; border-radius: 50%; z-index: 5; opacity: 0;
+  background: radial-gradient(circle at 35% 35%, #fff 0 20%, rgba(200,235,255,.6) 40%, rgba(150,210,255,.25) 70%); border: 2px solid rgba(255,255,255,.85);
+  animation: bubbleUp 2.2s ease-out forwards; }
+@keyframes bubbleUp { 10% { opacity: 1; } 100% { transform: translateY(-160px) scale(1.4); opacity: 0; } }
+.char.washing { animation: washRub .22s ease-in-out infinite; }
+@keyframes washRub { 0%,100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg) translateY(4px); } }
+.char.eating { animation: eatBob .38s ease-in-out infinite; }
+@keyframes eatBob { 50% { transform: translateY(14px) rotate(2deg); } }
+.char.thinking { animation: thinkTilt 1.4s ease-in-out infinite; }
+@keyframes thinkTilt { 0%,100% { transform: rotate(0); } 50% { transform: rotate(-7deg); } }
+.ep-prop { position: absolute; transform: translate(-50%, -50%); line-height: 1; z-index: 1; filter: drop-shadow(0 6px 4px rgba(0,0,0,.18)); }
+.ep-front .ep-prop { z-index: 4; }
+.ep-prop.hop { animation: propHop .5s ease-out; }
+@keyframes propHop { 40% { transform: translate(-50%, -90%) scale(1.15); } }
+.ep-spot.small { width: 130px; height: 130px; margin: -65px 0 0 -65px; border-width: 8px; }
+.ep-spot.small::after { font-size: 52px; }
+.char.sitting { transform: translateY(26px) scaleY(.9); transform-origin: 50% 100%; }

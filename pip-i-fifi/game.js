@@ -1444,7 +1444,7 @@ function episodesMenu() {
 function playEpisode(ep) {
   const WW = 1600, WH = 900, GROUND = 830;
   const SIZE = { pip: 280, fifi: 290, sowa: 390, zuzia: 260, kuba: 265 };
-  const my = show(`<div class="ep" id="ep"><div class="ep-world" id="epw"><div class="ep-bg" id="epbg"></div><div class="ep-props" id="epp"></div></div>
+  const my = show(`<div class="ep" id="ep"><div class="ep-world" id="epw"><div class="ep-bg" id="epbg"></div><div class="ep-props" id="epp"></div><div class="ep-front" id="epf"></div></div>
       <div class="ep-rain"></div><div class="ep-fade" id="epfade"></div><button class="ep-mic" id="epmic">🎤</button></div>${topbar(0, 0)}`);
   bindHome(); M.stop(.5);
   const world = $('#epw'), alive = () => $('#epw') === world;
@@ -1519,10 +1519,67 @@ function playEpisode(ep) {
       await wait(820);
     }
   };
+  /* little effects used by the nursery-routine episodes */
+  const bubbles = (x, y, n = 10) => { for (let i = 0; i < n; i++) { const b = document.createElement('div'); b.className = 'ep-bubble';
+    b.style.left = (x + (Math.random() - .5) * 120) + 'px'; b.style.top = (y + (Math.random() - .5) * 60) + 'px'; b.style.animationDelay = (i * .12) + 's';
+    $('#epp').appendChild(b); setTimeout(() => b.remove(), 2600); } };
+  const FX = {
+    water: async o => { const w = document.createElement('div'); w.className = 'ep-water'; w.style.left = (o.x - 58) + 'px'; w.style.top = (o.y + 18) + 'px';
+      $('#epp').appendChild(w); sfx('splash'); bubbles(o.x, o.y + 60, 12); await wait(1300); sfx('splash'); await wait(1100); w.remove(); },
+    soup: async () => { for (const el of $$('#epf .soup')) { el.style.transition = 'opacity .5s'; el.style.opacity = 1; } sfx('plop'); await wait(600); },
+    eat: async o => { const who = o.who || 'fifi'; const c = actors[who] && $('.char', actors[who].el); if (c) c.classList.add('eating');
+      for (let i = 0; i < 4; i++) { sfx('tick'); await wait(380); } if (c) c.classList.remove('eating');
+      if (o.empty) $$(`#plate-${who} .soup`).forEach(el => el.style.opacity = 0); },
+    refill: async o => { $$(`#plate-${o.who || 'fifi'} .soup`).forEach(el => { el.style.transition = 'opacity .6s'; el.style.opacity = 1; }); sfx('plop'); await wait(700); },
+    pour: async () => { const r = $('#cup-water'); if (!r) return; sfx('splash'); for (let h = 0; h <= 44; h += 4) { r.setAttribute('y', 650 - h); r.setAttribute('height', h); await wait(60); } }
+  };
+  /* Olivia does it: a glowing spot to tap (the tap, the chair...). If she doesn't, Pip shows how after a while. */
+  const doIt = async d => {
+    camTo(d.cam || 'wide');
+    if (d.fifi) await seq([['fifi', 'en', d.fifi]]); if (!alive()) return;
+    const spot = document.createElement('div'); spot.className = 'ep-spot'; spot.style.left = d.x + 'px'; spot.style.top = d.y + 'px';
+    world.appendChild(spot);
+    const got = await new Promise(res => { let done = false; const fin = v => { if (done) return; done = true; clearTimeout(t1); clearTimeout(t2); res(v); };
+      spot.addEventListener('pointerdown', e => { e.stopPropagation(); fin(true); });
+      const t1 = setTimeout(() => alive() && seq([['pip', 'pl', 'Tutaj!']]), 6000);
+      const t2 = setTimeout(() => fin(false), 13000); });
+    spot.classList.add('hit'); setTimeout(() => spot.remove(), 500); if (!alive()) return;
+    if (got) { sfx('spark'); confettiSmall(); }
+    if (d.fx) await FX[d.fx](d); if (!alive()) return;
+    if (d.after) await seq(d.after.map(([w, t]) => [w, lang(w), kidT(t)]));
+  };
+
+  /* props: toys, books, crayons... (emoji objects that can move, change and disappear) */
+  const props = {};
+  const prop = o => { const el = document.createElement('div'); el.className = 'ep-prop'; el.textContent = o.e;
+    Object.assign(el.style, { left: o.x + 'px', top: o.y + 'px', fontSize: (o.size || 90) + 'px' }); (o.front ? $('#epf') : $('#epp')).appendChild(el); props[o.id] = el; };
+  const moveProp = async o => { const el = props[o.id]; if (!el) return; el.style.transition = `left ${o.dur || 900}ms ease-in-out, top ${o.dur || 900}ms ease-in-out, font-size ${o.dur || 900}ms, transform ${o.dur || 900}ms`;
+    el.style.left = o.x + 'px'; el.style.top = o.y + 'px'; if (o.size) el.style.fontSize = o.size + 'px'; if (o.hop) { el.classList.remove('hop'); void el.offsetWidth; el.classList.add('hop'); }
+    if (o.wait !== false) await wait(o.dur || 900); };
+  /* tidy up: a glowing spot on each toy; every tap sends one into the box and Pip counts */
+  const tidy = async d => {
+    if (d.fifi) await seq([['fifi', 'en', kidT(d.fifi)]]); if (!alive()) return;
+    const COUNTS = ['Jeden!', 'Dwa!', 'Trzy!', 'Cztery!', 'Pięć!'];
+    let n = 0;
+    await new Promise(res => {
+      const left = new Set(d.ids);
+      const send = async id => { if (!left.has(id)) return; left.delete(id); const sp = world.querySelector(`.ep-spot[data-id="${id}"]`); if (sp) { sp.classList.add('hit'); setTimeout(() => sp.remove(), 450); }
+        sfx('pop'); const k = n++; moveProp({ id, x: d.box[0], y: d.box[1], size: 40, hop: true, wait: false });
+        setTimeout(() => { if (props[id]) props[id].style.opacity = 0; }, 850);
+        await seq([['pip', 'pl', COUNTS[k] || 'Brawo!']]); if (!left.size) res(); };
+      d.ids.forEach(id => { const el = props[id]; if (!el) return; const sp = document.createElement('div'); sp.className = 'ep-spot small'; sp.dataset.id = id;
+        sp.style.left = el.style.left; sp.style.top = el.style.top; world.appendChild(sp); sp.addEventListener('pointerdown', e => { e.stopPropagation(); send(id); }); });
+      let helped = false;
+      const help = setInterval(async () => { if (!alive()) { clearInterval(help); return res(); } if (!left.size) return clearInterval(help);
+        if (!helped) { helped = true; await seq([['pip', 'pl', 'Pomogę ci!']]); } send([...left][0]); }, 9000);
+    });
+    if (!alive()) return; confettiSmall(); sfx('spark');
+  };
+
   const setScene = async id => {
     const f = $('#epfade'); f.classList.add('on'); await wait(450); if (!alive()) return;
     Object.values(actors).forEach(a => a.el.remove()); Object.keys(actors).forEach(k => delete actors[k]);
-    $('#epp').innerHTML = ''; $('#ep').classList.remove('raining'); $('#epbg').innerHTML = window.EP_SCENES[id]; camTo('wide', 0);
+    $('#epp').innerHTML = ''; Object.keys(props).forEach(k => delete props[k]); $('#ep').classList.remove('raining'); $('#epbg').innerHTML = window.EP_SCENES[id]; $('#epf').innerHTML = (window.EP_FRONT || {})[id] || ''; camTo('wide', 0);
     await wait(80); f.classList.remove('on');
   };
 
@@ -1580,6 +1637,19 @@ function playEpisode(ep) {
       if (st.puddles) { $('#epp').insertAdjacentHTML('beforeend', st.puddles.map(x => `<div class="ep-puddle" style="left:${x}px;top:${GROUND + 6}px"><i></i></div>`).join('')); continue; }
       if (st.boots) { st.boots.forEach(w => { const a = actors[w]; if (a && !$('.ep-boots', a.el)) { a.el.insertAdjacentHTML('beforeend', '<div class="ep-boots"><i></i><i></i></div>'); sfx('pop'); } }); await wait(500); continue; }
       if (st.jump) { await jump(st.jump, st.times || 1); continue; }
+      if (st.do) { await doIt(st.do); continue; }
+      if (st.prop) { [].concat(st.prop).forEach(prop); continue; }
+      if (st.move) { await moveProp(st.move); continue; }
+      if (st.swap) { const el = props[st.swap.id]; if (el) { el.textContent = st.swap.e; el.classList.remove('hop'); void el.offsetWidth; el.classList.add('hop'); sfx('pop'); } await wait(500); continue; }
+      if (st.gone) { [].concat(st.gone).forEach(id => { if (props[id]) { props[id].remove(); delete props[id]; } }); continue; }
+      if (st.tidy) { await tidy(st.tidy); continue; }
+      if (st.addc) { const [w, c] = st.addc; const ch = actors[w] && $('.char', actors[w].el); if (ch) ch.classList.add(c); continue; }
+      if (st.rmc) { const [w, c] = st.rmc; const ch = actors[w] && $('.char', actors[w].el); if (ch) ch.classList.remove(c); continue; }
+      if (st.fx) { await FX[st.fx.name](st.fx); continue; }
+      if (st.sit) { const moves = st.sit; await walk(moves, st.dur || 1200);
+        Object.keys(moves).forEach(w => { const a = actors[w]; if (a) { a.el.style.transition = 'top .35s'; a.el.style.top = (GROUND - 135) + 'px'; } }); await wait(400); continue; }
+      if (st.mime) { const [w, act] = st.mime, c = actors[w] && $('.char', actors[w].el); if (c) { c.classList.add(act);
+        if (act === 'washing') bubbles(actors[w].x, GROUND - SIZE[w] * .45, 8); await wait(st.dur || 1800); c.classList.remove(act); } continue; }
       if (st.ask) { await ask(st.ask); continue; }
       if (st.end) {
         M.stop(.6); cheer(); confettiSmall(); await wait(1200); if (!alive()) return;
