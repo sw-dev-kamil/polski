@@ -537,6 +537,7 @@ const TILES = [
   { id: 'bed',       e: '🌙', en: 'Good night',    pl: 'Dobranoc',     s: '#D9D2F2' },
   { id: 'teacher',   e: '👩‍🏫', en: 'Hello, teacher', pl: 'Dzień dobry, Pani!', s: '#F7D0D9' },
   { id: 'arts',      e: '🎨', en: 'Arts and crafts', pl: 'Zajęcia',    s: '#FCE3B0' },
+  { id: 'pipwalk',   e: '🦔', en: "Pip's walk",   pl: 'Spacer z Pipem', s: '#E8D9C4' },
   { id: 'forest',    e: '🌲', en: 'Forest run',    pl: 'W lesie',      s: '#CFEBC4' },
   { id: 'playground',e: '🛝', en: 'Playground',    pl: 'Plac zabaw',   s: '#CFEBC4' },
   { id: 'beach',     e: '🌊', en: 'At the beach',  pl: 'Plaża',        s: '#BFE6F2' },
@@ -546,7 +547,7 @@ const TILES = [
 const WORLDS = [
   { id: 'home',     e: '🏠', pl: 'W domu',         en: 'At home',          tiles: ['tv', 'bake', 'teddy', 'food', 'bath', 'bed', 'stickers'] },
   { id: 'nursery',  e: '🏫', pl: 'W przedszkolu',  en: 'At nursery',       tiles: ['tv', 'teacher', 'friends', 'needs', 'arts', 'dress', 'songs', 'stickers'] },
-  { id: 'outside',  e: '🌳', pl: 'Na dworze',      en: 'Playing outside',  tiles: ['forest', 'playground', 'colours', 'animals', 'count', 'stickers'] },
+  { id: 'outside',  e: '🌳', pl: 'Na dworze',      en: 'Playing outside',  tiles: ['forest', 'pipwalk', 'playground', 'colours', 'animals', 'count', 'stickers'] },
   { id: 'shop',     e: '🛒', pl: 'W sklepie',      en: 'At the shop',      tiles: ['shopping', 'fruit', 'veg', 'stickers'] },
   { id: 'holidays', e: '🏖️', pl: 'Wakacje',        en: 'Holidays',         tiles: ['beach', 'icecream', 'stickers'] }
 ];
@@ -630,7 +631,7 @@ async function openTile(id, el) {
   hush(); const my = tk; M.stop(1.2);
   el.style.transform = 'scale(1.12)';
   const go = { colours: () => pickGame('colours'), animals: () => pickGame('animals'), count: countGame,
-    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), dress: () => seasonMenu(), bake: bakeGame, teddy: teddyGame, tv: episodesMenu, forest: forestGame, fruit: () => pickGame('fruit'), veg: () => pickGame('veg'), shopping: shopGame, songs: songsMenu, stickers: stickerBook }[id]
+    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), dress: () => seasonMenu(), bake: bakeGame, teddy: teddyGame, tv: episodesMenu, forest: forestGame, pipwalk: walkGame, fruit: () => pickGame('fruit'), veg: () => pickGame('veg'), shopping: shopGame, songs: songsMenu, stickers: stickerBook }[id]
     || (window.TOPICS[id] && (() => phraseGame(window.TOPICS[id])));
   await Promise.race([seq([['fifi', 'en', 'Yay! ' + t.en + '!'], ['pip', 'pl', 'Hura! ' + t.pl + '!']], my), wait(3200)]);
   opening = false;
@@ -1599,6 +1600,17 @@ function forestGame() {
   import('./forest.js').then(m => {
     if (my !== tk) return; $('.fr-load').remove();
     m.run({ say, seq: lines => seq(lines, my), sfx, M, wait, S, alive: () => my === tk && !!$('#frc'), confetti: confettiSmall, reward, again: forestGame });
+  }).catch(e => { $('.fr-load').textContent = '😕'; console.error(e); });
+}
+
+/* ---------- 🦔 a walk with Pip (3D) — lives in walk.js ---------- */
+function walkGame() {
+  const my = show(`<div class="forest" id="wk"><canvas id="wkc"></canvas><div class="fr-hud" id="wkh"></div>
+    <div class="fr-hint m">👆</div><div class="fr-load">🦔</div><div class="fr-credit">Fox model: "Running Fox" by Google Data Arts Team (CC BY)</div></div>${topbar(0, 0)}`);
+  bindHome(); $('#again').onclick = () => walkGame();
+  import('./walk.js').then(m => {
+    if (my !== tk) return; $('.fr-load').remove();
+    m.run({ say, seq: lines => seq(lines, my), sfx, M, wait, S, KID, alive: () => my === tk && !!$('#wkc'), confetti: confettiSmall, reward, again: walkGame });
   }).catch(e => { $('.fr-load').textContent = '😕'; console.error(e); });
 }
 

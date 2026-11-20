@@ -127,6 +127,12 @@ const GEO = {
       P.push(part(new THREE.IcosahedronGeometry(rad, 0), r() > .35 ? C.cloud : C.cloud2, { p: [x, rad * .35, (r() - .5) * 1.2], s: [1.1, .8, 1], jitter: .12, seed: seed * 13 + i })); }
     return merge(P);
   },
+  bush() {   // round faceted bush with a few berries
+    const P = [[0, .55, 0, .7], [.55, .42, .15, .5], [-.5, .45, -.1, .52], [.1, .4, .5, .45], [-.1, .9, -.05, .45]].map(([x, y, z, r], i) =>
+      part(new THREE.IcosahedronGeometry(r, 0), i % 2 ? C.pine2 : C.pine1, { p: [x, y, z], jitter: .06, seed: 30 + i }));
+    [[.3, .75, .45], [-.35, .7, .4], [.6, .6, .35]].forEach(p => P.push(part(Ico(.07), C.cap, { p })));
+    return merge(P);
+  },
   birch(seed = 1) {   // autumn birch: white trunk with dark marks, golden faceted crown
     const P = [part(Cyl(.17, .22, 3.6, 6), C.birch, { p: [0, 1.8, 0] })];
     for (let i = 0; i < 7; i++) P.push(part(new THREE.BoxGeometry(.22, .05, .06), C.birchMark, { p: [Math.sin(i * 2.3) * .17, .5 + i * .42, Math.cos(i * 2.3) * .17], r: [0, i * 2.3, (i % 2 - .5) * .3] }));
@@ -614,4 +620,4 @@ export async function run(api) {
   setTimeout(() => host.classList.remove('hints'), 4000);
   const faster = setInterval(() => { if (!alive()) return clearInterval(faster); if (!finished && !paused && target > 0) target = Math.min(10, target + .25); }, 8000);
 }
-export { makePip, paintHog, splitHogLegs };
+export { THREE, GEO, MAT, C, ITEMS, part, merge, mesh, blob, makePip, paintHog, splitHogLegs };
