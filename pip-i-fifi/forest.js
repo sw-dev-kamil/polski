@@ -195,6 +195,40 @@ function makePip() {
   return { g, m: body, legs };
 }
 
+/* colour the grey hedgehog model (models/hedgehog.glb, face towards +z, feet at y = 0):
+   face, tummy and feet tan, eyes and nose black, everything else a mix of spike browns */
+function paintHog(root) {
+  root.updateMatrixWorld(true);
+  const SP = [0x6B4226, 0x7E5232, 0x5A3820, 0x8A5C3A].map(h => new THREE.Color(h));
+  const TAN = new THREE.Color(0xD9AE7E), TAN2 = new THREE.Color(0xC99A68), BLACK = new THREE.Color(0x1A1310), EAR = new THREE.Color(0xB8875A);
+  const v = [0, 1, 2].map(() => new THREE.Vector3()), c = new THREE.Vector3(), n = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3();
+  const near = (p, x, y, z, r) => Math.hypot(p.x - x, p.y - y, p.z - z) < r;
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry; o.geometry = g;
+    const pos = g.attributes.position, col = new Float32Array(pos.count * 3);
+    for (let t = 0; t < pos.count; t += 3) {
+      for (let k = 0; k < 3; k++) v[k].fromBufferAttribute(pos, t + k).applyMatrix4(o.matrixWorld);
+      c.copy(v[0]).add(v[1]).add(v[2]).divideScalar(3);
+      n.crossVectors(e1.subVectors(v[1], v[0]), e2.subVectors(v[2], v[0])).normalize();
+      const d = c.clone().sub(new THREE.Vector3(0, .026, 0)).normalize();
+      let k;
+      const all = (x, y, z, r) => v.every(p => near(p, x, y, z, r));                         // the whole triangle inside the bump
+      if (all(0, .0232, .0488, .0055)) k = BLACK;                                              // nose
+      else if (all(.012, .030, .036, .0052) || all(-.012, .030, .036, .0052)) k = BLACK;         // eyes
+      else if (near(c, .012, .042, .030, .0055) || near(c, -.012, .042, .030, .0055)) k = EAR;     // ears
+      else if (c.y < .0075) k = TAN2;                                                          // feet
+      else if (n.y < -.5) k = TAN;                                                             // tummy
+      else if (c.z > .018 && c.y < .038 && d.z > .5) k = TAN;                                  // face
+      else k = SP[(t / 3 * 7 + (n.x > 0 ? 1 : 0)) % 4];                                        // spikes
+      for (let q = 0; q < 3; q++) col.set([k.r, k.g, k.b], (t + q) * 3);
+    }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.deleteAttribute('normal');
+    o.material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+  });
+  return root;
+}
+
 function makeFox() {
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
   body.add(mesh(merge([
@@ -372,6 +406,13 @@ export async function run(api) {
   /* Pip: waits by the path after the first stretch, then runs alongside */
   const PIP = makePip(), pBlob = blob(.42, 1.1); PIP.g.add(pBlob); pBlob.position.y = .03;
   let pipMode = 'off'; PIP.g.visible = false; scene.add(PIP.g);
+  new GLTFLoader().load('./models/hedgehog.glb', gl => {      // Kamil's hedgehog, coloured in code (paintHog)
+    if (!alive()) return;
+    const hog = paintHog(gl.scene), box = new THREE.Box3().setFromObject(hog), k = 1.0 / (box.max.y - box.min.y);
+    const holder = new THREE.Group(); holder.add(hog); holder.scale.setScalar(k); holder.rotation.y = PI;   // its face points +z, the game's front is -z
+    hog.position.y -= box.min.y;
+    PIP.m.children.forEach(c => c.visible = false); PIP.legs.forEach(l => l.visible = false); PIP.m.add(holder);
+  }, undefined, e => console.warn('hedgehog model', e));
   let paused = false;
 
   /* things on the path */
@@ -480,7 +521,7 @@ export async function run(api) {
     }
     for (let i = pop.length - 1; i >= 0; i--) { const p = pop[i]; p.v += dt; p.m.position.y += dt * 6; p.m.scale.multiplyScalar(1 - dt * 2.5); if (p.v > .5) { scene.remove(p.m); pop.splice(i, 1); } }
 
-    if (pipMode === 'waiting') { PIP.g.position.z += dz; PIP.g.position.y = Math.abs(Math.sin(t * 5)) * .12; if (PIP.g.position.z > -4.2) target = 0; }
+    if (pipMode === 'waiting') { PIP.g.position.z += dz; PIP.g.position.y = Math.abs(Math.sin(t * 5)) * .12; if (PIP.g.position.z > -2.6) target = 0; }
     if (pipMode === 'running') { const rp = t * Math.max(speed, 3) * 1.8;
       PIP.g.position.set(3.35, (speed > .5 ? Math.abs(Math.sin(rp)) * .16 : 0), -.6 + Math.sin(t * .7) * .4); PIP.m.rotation.z = speed > .5 ? Math.sin(rp) * .06 : 0;
       PIP.legs.forEach((l, i) => l.rotation.x = speed > .5 ? Math.sin(rp * 1.2 + (i % 2 ? PI : 0) + (i > 1 ? PI : 0)) * .7 : 0); }
@@ -496,7 +537,7 @@ export async function run(api) {
     if (meeting) return; meeting = true; paused = true;
     things.filter(o => o.z < -1).forEach(o => { scene.remove(o.m); o.done = true; o.z = 99; });
     await wait(1200); if (!alive()) return;
-    PIP.g.position.set(2.7, 0, -34); PIP.g.rotation.y = PI; PIP.g.visible = true; pipMode = 'waiting'; target = 5;
+    PIP.g.position.set(3.0, 0, -32); PIP.g.rotation.y = PI - .5; PIP.g.visible = true; pipMode = 'waiting'; target = 5;
     while (talking) await wait(100);
     await api.seq([['fifi', 'en', "Look! It's Pip!"]]);
     while (alive() && speed > .3) await wait(100); if (!alive()) return;
@@ -535,4 +576,4 @@ export async function run(api) {
   setTimeout(() => host.classList.remove('hints'), 4000);
   const faster = setInterval(() => { if (!alive()) return clearInterval(faster); if (!finished && !paused && target > 0) target = Math.min(10, target + .25); }, 8000);
 }
-export { makePip };
+export { makePip, paintHog };
