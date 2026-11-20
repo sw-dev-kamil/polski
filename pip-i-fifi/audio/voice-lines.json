@@ -1126,5 +1126,22 @@
 {"id":"262cf6ce","lang":"pl","text":"Ale jesteście brudni!","v":"sowa"},
 {"id":"8d656706","lang":"pl","text":"Jeszcze raz?","v":"sowa"},
 {"id":"0e91913b","lang":"pl","text":"Jeszcze raz!"},
-{"id":"24194463","lang":"en","text":"What a splashy, muddy, happy day!","v":"nar"}
+{"id":"24194463","lang":"en","text":"What a splashy, muddy, happy day!","v":"nar"},
+{"id":"5bf3d6d9","lang":"pl","text":"W lesie!"},
+{"id":"6b17870d","lang":"en","text":"Forest run!"},
+{"id":"d1574262","lang":"pl","text":"Grzybek!"},
+{"id":"591e3352","lang":"pl","text":"Jagody!"},
+{"id":"4f6da2e5","lang":"pl","text":"Żołądź!"},
+{"id":"a9dad972","lang":"pl","text":"Poziomka!"},
+{"id":"70c78bcf","lang":"pl","text":"Idziemy do lasu!"},
+{"id":"d7f48801","lang":"pl","text":"Pełny koszyk!"},
+{"id":"a94c8c6c","lang":"en","text":"A mushroom!"},
+{"id":"6b4e9a29","lang":"en","text":"Blueberries!"},
+{"id":"00960fc7","lang":"en","text":"An acorn!"},
+{"id":"ca16664f","lang":"en","text":"A wild strawberry!"},
+{"id":"518da8e1","lang":"en","text":"Let's go to the forest!"},
+{"id":"97edf1e8","lang":"en","text":"Help me fill the basket!"},
+{"id":"0a755ec2","lang":"en","text":"Tap here and here to move me."},
+{"id":"adf72e05","lang":"en","text":"Tap the middle to jump!"},
+{"id":"616ba2a6","lang":"en","text":"Our basket is full!"}
 ]
