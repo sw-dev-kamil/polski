@@ -1443,7 +1443,7 @@ function playEpisode(ep) {
   const WW = 1600, WH = 900, GROUND = 830;
   const SIZE = { pip: 280, fifi: 290, sowa: 390, zuzia: 260, kuba: 265 };
   const my = show(`<div class="ep" id="ep"><div class="ep-world" id="epw"><div class="ep-bg" id="epbg"></div><div class="ep-props" id="epp"></div></div>
-      <div class="ep-fade" id="epfade"></div><button class="ep-mic" id="epmic">🎤</button></div>${topbar(0, 0)}`);
+      <div class="ep-rain"></div><div class="ep-fade" id="epfade"></div><button class="ep-mic" id="epmic">🎤</button></div>${topbar(0, 0)}`);
   bindHome(); M.stop(.5);
   const world = $('#epw'), alive = () => $('#epw') === world;
   const actors = {}; let cam = { x: WW / 2, y: WH / 2, z: 1 };
@@ -1497,10 +1497,30 @@ function playEpisode(ep) {
     }
     if (how === 'fall') { T.classList.add('fall'); await wait(350); sfx('plop'); setTimeout(() => sfx('plop'), 150); await wait(900); }
   };
+  /* hop into a puddle: splash + a bit muddier each time */
+  const jump = async (who, times) => {
+    for (let k = 0; k < times && alive(); k++) {
+      for (const w of [].concat(who)) {
+        const a = actors[w]; if (!a) continue;
+        a.el.classList.remove('jumping'); void a.el.offsetWidth; a.el.classList.add('jumping');
+        setTimeout(() => {
+          if (!alive()) return;
+          const near = $$('.ep-puddle').some(p => Math.abs(parseFloat(p.style.left) - a.x) < 170);
+          if (!near) return;
+          sfx('splash');
+          const sp = document.createElement('div'); sp.className = 'ep-splash'; sp.style.left = a.x + 'px'; sp.style.top = (GROUND + 4) + 'px';
+          sp.innerHTML = Array.from({ length: 9 }, (_, i) => `<i style="--a:${-80 + i * 20}deg;--d:${70 + Math.random() * 70}px"></i>`).join('');
+          $('#epp').appendChild(sp); setTimeout(() => sp.remove(), 900);
+          a.mud = Math.min(3, (a.mud || 0) + 1); a.el.dataset.mud = a.mud;
+        }, 520);
+      }
+      await wait(820);
+    }
+  };
   const setScene = async id => {
     const f = $('#epfade'); f.classList.add('on'); await wait(450); if (!alive()) return;
     Object.values(actors).forEach(a => a.el.remove()); Object.keys(actors).forEach(k => delete actors[k]);
-    $('#epp').innerHTML = ''; $('#epbg').innerHTML = window.EP_SCENES[id]; camTo('wide', 0);
+    $('#epp').innerHTML = ''; $('#ep').classList.remove('raining'); $('#epbg').innerHTML = window.EP_SCENES[id]; camTo('wide', 0);
     await wait(80); f.classList.remove('on');
   };
 
@@ -1554,6 +1574,10 @@ function playEpisode(ep) {
       if (st.sfx) { sfx(st.sfx); continue; }
       if (st.wait) { await wait(st.wait); continue; }
       if (st.tower) { await tower(st.tower); continue; }
+      if ('rain' in st) { $('#ep').classList.toggle('raining', !!st.rain); if (st.rain) sfx('splash'); continue; }
+      if (st.puddles) { $('#epp').insertAdjacentHTML('beforeend', st.puddles.map(x => `<div class="ep-puddle" style="left:${x}px;top:${GROUND + 6}px"><i></i></div>`).join('')); continue; }
+      if (st.boots) { st.boots.forEach(w => { const a = actors[w]; if (a && !$('.ep-boots', a.el)) { a.el.insertAdjacentHTML('beforeend', '<div class="ep-boots"><i></i><i></i></div>'); sfx('pop'); } }); await wait(500); continue; }
+      if (st.jump) { await jump(st.jump, st.times || 1); continue; }
       if (st.ask) { await ask(st.ask); continue; }
       if (st.end) {
         M.stop(.6); cheer(); confettiSmall(); await wait(1200); if (!alive()) return;

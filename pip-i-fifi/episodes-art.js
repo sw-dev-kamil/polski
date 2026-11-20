@@ -27,6 +27,24 @@ window.EP_SCENES = {
     <g><rect x="160" y="420" width="26" height="200" fill="#8B6B4A"/><circle cx="173" cy="400" r="90" fill="#6FBF5A"/><circle cx="120" cy="440" r="60" fill="#7FCB69"/><circle cx="230" cy="430" r="62" fill="#5EAE4B"/></g>
     <path d="M0 800 Q800 770 1600 800 V900 H0 Z" fill="#7FC765"/>
   </svg>`,
+  garden: `<svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+    <defs><linearGradient id="skg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9FC8E8"/><stop offset="1" stop-color="#E4F1FA"/></linearGradient></defs>
+    <rect width="1600" height="900" fill="url(#skg)"/>
+    <g class="sun"><circle cx="1430" cy="120" r="66" fill="#FFE066"/><circle cx="1430" cy="120" r="96" fill="#FFE066" opacity=".25"/></g>
+    <g fill="#fff" opacity=".85"><ellipse cx="300" cy="140" rx="110" ry="38"/><ellipse cx="370" cy="118" rx="70" ry="40"/><ellipse cx="1000" cy="110" rx="90" ry="30"/></g>
+    <path d="M0 610 Q400 540 800 600 Q1200 660 1600 580 V900 H0 Z" fill="#8FCB72"/>
+    <rect x="0" y="700" width="1600" height="200" fill="#9BD67F"/>
+    ${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17].map(i => `<rect x="${20 + i * 92}" y="600" width="16" height="96" rx="6" fill="#fff"/>`).join('')}
+    <rect x="0" y="620" width="1600" height="13" rx="6" fill="#fff"/><rect x="0" y="660" width="1600" height="13" rx="6" fill="#fff"/>
+    <g><rect x="150" y="380" width="28" height="260" fill="#8B6B4A"/><circle cx="164" cy="350" r="110" fill="#5DB85A"/><circle cx="90" cy="400" r="70" fill="#4FA84D"/><circle cx="240" cy="395" r="72" fill="#4FA84D"/>
+      <circle cx="120" cy="330" r="12" fill="#E8505B"/><circle cx="210" cy="300" r="12" fill="#E8505B"/><circle cx="180" cy="410" r="12" fill="#E8505B"/></g>
+    <g><rect x="1180" y="430" width="22" height="300" rx="8" fill="#5B8DEF"/><rect x="1260" y="430" width="22" height="300" rx="8" fill="#5B8DEF"/>
+      ${[0, 1, 2, 3, 4].map(i => `<rect x="1180" y="${470 + i * 52}" width="100" height="12" rx="5" fill="#5B8DEF"/>`).join('')}
+      <rect x="1166" y="410" width="130" height="30" rx="10" fill="#E8505B"/>
+      <path d="M1290 420 Q1420 520 1500 730 L1550 730 Q1460 500 1300 400 Z" fill="#FFC93C"/></g>
+    <g><rect x="470" y="690" width="300" height="70" rx="14" fill="#E7B56C"/><rect x="484" y="700" width="272" height="40" rx="10" fill="#F6DCA0"/>
+      <path d="M560 712 q20 -24 40 0 Z" fill="#E8C47E"/><rect x="680" y="676" width="10" height="40" rx="4" fill="#E8505B" transform="rotate(20 685 696)"/><path d="M640 712 l30 0 -6 -22 -18 0 Z" fill="#4CC373"/></g>
+  </svg>`,
   hall: `<svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
     <rect width="1600" height="900" fill="#FFF3DC"/><rect y="600" width="1600" height="300" fill="#E3C69E"/><rect y="594" width="1600" height="12" fill="#C9A57A"/>
     ${[0, 1, 2, 3, 4, 5].map(i => { const x = 120 + i * 150, c = ['#BFE3F5', '#FFD6E0', '#D7F0C8', '#FFE9A8', '#E4D4F4', '#FFD9B8'][i]; return `
