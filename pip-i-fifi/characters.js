@@ -66,6 +66,54 @@
     ${mouth(100, 146)}
   </svg>`;
 
+
+  /* ---- episode cast: Pani Sowa (owl teacher), Zuzia (bunny), Kuba (bear cub) ---- */
+  const sowaSVG = () => `<svg viewBox="0 0 200 250" aria-hidden="true">
+    <path d="M52 62 L44 18 L80 46 Z M148 62 L156 18 L120 46 Z" fill="#7E6248"/>
+    <ellipse cx="100" cy="160" rx="78" ry="86" fill="#9C7B5B"/>
+    <ellipse cx="100" cy="176" rx="50" ry="62" fill="#EBDDC2"/>
+    <path d="M78 150 l8 8 8 -8 M106 150 l8 8 8 -8 M86 176 l8 8 8 -8 M100 200 l8 8 8 -8 M78 200 l8 8 8 -8" stroke="#C9B48F" stroke-width="3" fill="none"/>
+    <path d="M24 150 Q10 200 46 228 Q40 188 54 150 Z" fill="#7E6248"/>
+    <g class="arm-wave" style="transform-origin:160px 150px"><path d="M176 150 Q192 200 154 228 Q160 188 146 150 Z" fill="#7E6248"/></g>
+    <ellipse cx="100" cy="86" rx="72" ry="58" fill="#9C7B5B"/>
+    <circle cx="70" cy="84" r="26" fill="#fff"/><circle cx="130" cy="84" r="26" fill="#fff"/>
+    <circle cx="70" cy="84" r="29" fill="none" stroke="#C99A6A" stroke-width="4"/><circle cx="130" cy="84" r="29" fill="none" stroke="#C99A6A" stroke-width="4"/><path d="M99 82 h2" stroke="#C99A6A" stroke-width="4"/>
+    <g class="eye"><circle cx="72" cy="86" r="11" fill="#2B2118"/><circle cx="75" cy="82" r="3.5" fill="#fff"/></g>
+    <g class="eye"><circle cx="128" cy="86" r="11" fill="#2B2118"/><circle cx="131" cy="82" r="3.5" fill="#fff"/></g>
+    <path class="eye-happy" d="M60 90 Q72 76 84 90 M116 90 Q128 76 140 90" fill="none" stroke="#2B2118" stroke-width="5" stroke-linecap="round"/>
+    <path class="mouth-c" d="M92 108 L100 122 L108 108 Z" fill="#F2A23C"/>
+    <g class="mouth-o"><path d="M91 106 L100 116 L109 106 Z" fill="#F2A23C"/><path d="M93 118 L100 128 L107 118 Z" fill="#E08A26"/></g>
+    <path d="M70 134 Q100 150 130 134 L126 146 Q100 160 74 146 Z" fill="#FF8FB1"/><circle cx="100" cy="148" r="7" fill="#FF6F9A"/>
+    <ellipse cx="78" cy="244" rx="16" ry="6" fill="#F2A23C"/><ellipse cx="122" cy="244" rx="16" ry="6" fill="#F2A23C"/>
+  </svg>`;
+  const zuziaSVG = () => `<svg viewBox="0 0 200 250" aria-hidden="true">
+    <path d="M70 92 C52 30 58 0 74 2 C92 4 92 50 88 92 Z" fill="#F4EEF0"/><path d="M74 86 C64 40 66 16 74 16 C84 18 84 52 82 86 Z" fill="#FFC1D4"/>
+    <path d="M130 92 C148 30 142 0 126 2 C108 4 108 50 112 92 Z" fill="#F4EEF0"/><path d="M126 86 C136 40 134 16 126 16 C116 18 116 52 118 86 Z" fill="#FFC1D4"/>
+    <path d="M58 168 Q100 150 142 168 L152 236 Q100 250 48 236 Z" fill="#FF8FB1"/>
+    <path d="M58 180 Q38 196 44 214" stroke="#F4EEF0" stroke-width="16" stroke-linecap="round" fill="none"/>
+    <g class="arm-wave" style="transform-origin:142px 178px"><path d="M142 180 Q162 196 156 214" stroke="#F4EEF0" stroke-width="16" stroke-linecap="round" fill="none"/></g>
+    <circle cx="100" cy="122" r="56" fill="#F4EEF0"/>
+    <path d="M118 74 l16 -10 2 18 Z M118 74 l-14 -12 -2 18 Z" fill="#FF6F9A"/><circle cx="118" cy="74" r="6" fill="#FF4F86"/>
+    ${eyes(80, 120, 116)}
+    <circle cx="66" cy="138" r="9" fill="#FFB6C9" opacity=".8"/><circle cx="134" cy="138" r="9" fill="#FFB6C9" opacity=".8"/>
+    <ellipse cx="100" cy="134" rx="7" ry="5" fill="#FF7A9A"/>
+    ${mouth(100, 148)}
+    <ellipse cx="80" cy="242" rx="18" ry="8" fill="#F4EEF0"/><ellipse cx="120" cy="242" rx="18" ry="8" fill="#F4EEF0"/>
+  </svg>`;
+  const kubaSVG = () => `<svg viewBox="0 0 200 230" aria-hidden="true">
+    <circle cx="56" cy="58" r="22" fill="#B07A4F"/><circle cx="144" cy="58" r="22" fill="#B07A4F"/><circle cx="56" cy="58" r="11" fill="#E8C9A0"/><circle cx="144" cy="58" r="11" fill="#E8C9A0"/>
+    <path d="M56 152 Q100 138 144 152 L148 214 Q100 226 52 214 Z" fill="#5B8DEF"/><path d="M90 150 l10 14 10 -14" stroke="#FFE066" stroke-width="5" fill="none"/>
+    <path d="M58 164 Q38 180 44 200" stroke="#B07A4F" stroke-width="18" stroke-linecap="round" fill="none"/>
+    <g class="arm-wave" style="transform-origin:142px 162px"><path d="M142 164 Q162 180 156 200" stroke="#B07A4F" stroke-width="18" stroke-linecap="round" fill="none"/></g>
+    <circle cx="100" cy="100" r="56" fill="#B07A4F"/>
+    <ellipse cx="100" cy="122" rx="28" ry="21" fill="#E8C9A0"/>
+    ${eyes(80, 120, 94)}
+    <ellipse cx="100" cy="112" rx="10" ry="7" fill="#3A2A20"/>
+    ${mouth(100, 128)}
+    <ellipse cx="78" cy="222" rx="20" ry="9" fill="#B07A4F"/><ellipse cx="122" cy="222" rx="20" ry="9" fill="#B07A4F"/>
+  </svg>`;
+  const CAST = { pip: () => pipSVG(), fifi: () => fifiSVG(), sowa: sowaSVG, zuzia: zuziaSVG, kuba: kubaSVG };
+
   window.charHTML = (who, extra = '') =>
-    `<div class="char ${who} ${extra}" data-who="${who}">${who === 'pip' ? pipSVG() : fifiSVG()}</div>`;
+    `<div class="char ${who} ${extra}" data-who="${who}">${(CAST[who] || CAST.pip)()}</div>`;
 })();

@@ -454,3 +454,31 @@ body.sunny #screen::before { content: ''; position: fixed; inset: 0; background:
 @media (orientation: portrait) { .teddy { bottom: 26vh; height: 46vh; } .tub { bottom: 28vh; right: 3vw; } .mat { bottom: 24vh; } .b-floor { height: 30vh; } }
 .teddy .mud { pointer-events: none; transition: opacity 1.4s; }
 .teddy.rinsed .mud, .phrase .mud { opacity: 0; }
+
+/* ---------- 📺 episodes ---------- */
+.ep { position: fixed; inset: 0; overflow: hidden; background: #2b2b3a; z-index: 5; }
+.ep-world { position: absolute; left: 0; top: 0; width: 1600px; height: 900px; transform-origin: 0 0; will-change: transform; }
+.ep-bg, .ep-bg svg { position: absolute; inset: 0; width: 1600px; height: 900px; display: block; }
+.ep-props { position: absolute; inset: 0; pointer-events: none; }
+.ep-fade { position: absolute; inset: 0; background: #FFF8EC; opacity: 0; pointer-events: none; transition: opacity .45s; z-index: 8; }
+.ep-fade.on { opacity: 1; }
+.ep ~ .topbar, .view .topbar { z-index: 10; }
+.actor { position: absolute; transform: translate(-50%, -100%); z-index: 2; }
+.actor .flip { transition: transform .25s; }
+.actor.face-l .flip { transform: scaleX(-1); }
+.actor .char { position: relative; width: 100%; left: auto; right: auto; bottom: auto; }
+.char.shy { filter: saturate(.85); }
+.char.shy:not(.talking):not(.walking) { animation: shyRock 2.4s ease-in-out infinite; }
+@keyframes shyRock { 0%,100% { transform: rotate(-3deg) scale(.97); } 50% { transform: rotate(2deg) scale(.97); } }
+.char.whisper { animation: listenTilt 1.2s ease-in-out infinite; }
+.ep-mic { position: absolute; right: 5vw; bottom: 5vh; transform: scale(0); width: 16vmin; height: 16vmin; border-radius: 50%;
+  border: 0; background: #fff; font-size: 8vmin; box-shadow: 0 0 0 1.2vmin rgba(255,201,60,.7), 0 1vmin 2.5vmin rgba(0,0,0,.25); z-index: 9;
+  transition: transform .35s cubic-bezier(.3,1.6,.5,1); }
+.ep-mic.on { transform: scale(var(--lv, 1)); animation: micGlow 1.4s ease-in-out infinite; }
+@keyframes micGlow { 50% { box-shadow: 0 0 0 2.4vmin rgba(255,201,60,.45), 0 1vmin 2.5vmin rgba(0,0,0,.25); } }
+.tower { position: absolute; width: 90px; transform: translate(-50%, -100%); display: flex; flex-direction: column-reverse; align-items: center; transform-origin: 50% 100%; }
+.tower i { display: block; width: 86px; height: 52px; border-radius: 10px; margin-top: -2px; box-shadow: inset 0 -8px 0 rgba(0,0,0,.15); animation: blockDrop .35s cubic-bezier(.3,1.5,.5,1); }
+.tower i:nth-child(even) { width: 76px; }
+@keyframes blockDrop { from { transform: translateY(-160px); opacity: 0; } }
+.tower.fall { animation: towerFall 1s cubic-bezier(.5,0,.8,.6) forwards; }
+@keyframes towerFall { to { transform: translate(-50%, -100%) rotate(84deg) translate(40px, 30px); } }

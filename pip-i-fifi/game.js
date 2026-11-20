@@ -61,10 +61,11 @@ function pickVoices() {
 }
 if (hasTTS) { pickVoices(); speechSynthesis.onvoiceschanged = pickVoices; }
 const STYLE = {
-  natural: { fifi: 1.1, pip: 1.0 },
-  cartoon: { fifi: 1.45, pip: 1.25 },
-  extra:   { fifi: 1.7, pip: 1.5 }
+  natural: { fifi: 1.1, pip: 1.0, sowa: 0.95, zuzia: 1.5, kuba: 1.3 },
+  cartoon: { fifi: 1.45, pip: 1.25, sowa: 1.0, zuzia: 1.75, kuba: 1.5 },
+  extra:   { fifi: 1.7, pip: 1.5, sowa: 1.05, zuzia: 1.9, kuba: 1.7 }
 };
+const CAST_VOICE = { sowa: 'sowa', zuzia: 'zuzia', kuba: 'kuba' };   // own recorded voices in episodes
 
 let tk = 0; // changes whenever the screen changes → stops old speech sequences
 let mouthTimer = null;
@@ -96,11 +97,11 @@ function prosody(piece, i, n, who, lang) {
    Every sentence is split into pieces ("Gdzie jest czapka?" / "Załóż czapkę!"); each piece = audio/<id>.mp3.
    If any piece of a line has no file yet, the whole line uses the iPad voice (no mixing) and the
    missing pieces are noted for the next top-up (grown-up panel). */
-const lineId = (lang, text) => { let h = 0x811c9dc5; const t = lang + '|' + text; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16).padStart(8, '0'); };
+const lineId = (lang, text, v) => { let h = 0x811c9dc5; const t = (v ? v + '#' : '') + lang + '|' + text; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16).padStart(8, '0'); };
 const REC = { have: new Set(), raw: new Map(), buf: new Map(), playing: [], stop: null, total: 0, done: 0, finished: false };
 const MISS_KEY = 'pipfifi.missing';
-function noteMissing(lang, list) {
-  try { const m = JSON.parse(localStorage.getItem(MISS_KEY) || '{}'); list.forEach(t => { m[lineId(lang, t)] = [lang, t]; }); localStorage.setItem(MISS_KEY, JSON.stringify(m)); } catch (e) {}
+function noteMissing(lang, list, v) {
+  try { const m = JSON.parse(localStorage.getItem(MISS_KEY) || '{}'); list.forEach(t => { m[lineId(lang, t, v)] = [lang, t, v || '']; }); localStorage.setItem(MISS_KEY, JSON.stringify(m)); } catch (e) {}
 }
 async function recPreload() {                // during the start screen: fetch every file (the service worker keeps them offline)
   try { REC.have = new Set(await (await fetch('audio/index.json', { cache: 'no-cache' })).json()); } catch (e) { REC.finished = true; return; }
@@ -131,7 +132,8 @@ async function recPlay(ids) {                // resolves true when finished (or 
 
 function say(who, lang, text) {
   text = kidify(text, lang);
-  const parts = pieces(text), ids = parts.map(p => lineId(lang, p));
+  const v = CAST_VOICE[who] || '';
+  const parts = pieces(text), ids = parts.map(p => lineId(lang, p, v));
   if (S.recVoices !== false && AUDIO && REC.have.size) {
     const missing = parts.filter((p, i) => !REC.have.has(ids[i]));
     if (!missing.length) return new Promise(async res => {
@@ -140,7 +142,7 @@ function say(who, lang, text) {
       if (!ok) { M.duck(false); talk(who, false); return say2(who, lang, text).then(res); }
       M.duck(false); talk(who, false); speakingUntil = performance.now() + 400; res();
     });
-    noteMissing(lang, missing);
+    noteMissing(lang, missing, v);
   }
   return say2(who, lang, text);
 }
@@ -527,6 +529,7 @@ const TILES = [
   { id: 'fruit',     e: '🍎', en: 'Fruit',         pl: 'Owoce',        s: '#FAD4CF' },
   { id: 'veg',       e: '🥕', en: 'Vegetables',    pl: 'Warzywa',      s: '#D7EFC4' },
   { id: 'shopping',  e: '🛒', en: 'Shopping',      pl: 'Zakupy',       s: '#FFE7A8' },
+  { id: 'tv',        e: '📺', en: 'Cartoons',      pl: 'Bajki',        s: '#D9E8FF' },
   { id: 'teddy',     e: '🧸', en: 'Bathing teddy', pl: 'Kąpiemy misia', s: '#CDE9F7' },
   { id: 'bake',      e: '🧁', en: 'Baking',        pl: 'Pieczemy',     s: '#FBD9C4' },
   { id: 'food',      e: '🍽️', en: 'Mealtime',      pl: 'Jedzenie',     s: '#F8D7B8' },
@@ -540,8 +543,8 @@ const TILES = [
 ];
 /* places on the main screen: each has its own scene and its own tiles (⭐ stickers everywhere) */
 const WORLDS = [
-  { id: 'home',     e: '🏠', pl: 'W domu',         en: 'At home',          tiles: ['bake', 'teddy', 'food', 'bath', 'bed', 'stickers'] },
-  { id: 'nursery',  e: '🏫', pl: 'W przedszkolu',  en: 'At nursery',       tiles: ['teacher', 'friends', 'needs', 'arts', 'dress', 'songs', 'stickers'] },
+  { id: 'home',     e: '🏠', pl: 'W domu',         en: 'At home',          tiles: ['tv', 'bake', 'teddy', 'food', 'bath', 'bed', 'stickers'] },
+  { id: 'nursery',  e: '🏫', pl: 'W przedszkolu',  en: 'At nursery',       tiles: ['tv', 'teacher', 'friends', 'needs', 'arts', 'dress', 'songs', 'stickers'] },
   { id: 'outside',  e: '🌳', pl: 'Na dworze',      en: 'Playing outside',  tiles: ['playground', 'colours', 'animals', 'count', 'stickers'] },
   { id: 'shop',     e: '🛒', pl: 'W sklepie',      en: 'At the shop',      tiles: ['shopping', 'fruit', 'veg', 'stickers'] },
   { id: 'holidays', e: '🏖️', pl: 'Wakacje',        en: 'Holidays',         tiles: ['beach', 'icecream', 'stickers'] }
@@ -626,7 +629,7 @@ async function openTile(id, el) {
   hush(); const my = tk; M.stop(1.2);
   el.style.transform = 'scale(1.12)';
   const go = { colours: () => pickGame('colours'), animals: () => pickGame('animals'), count: countGame,
-    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), dress: () => seasonMenu(), bake: bakeGame, teddy: teddyGame, fruit: () => pickGame('fruit'), veg: () => pickGame('veg'), shopping: shopGame, songs: songsMenu, stickers: stickerBook }[id]
+    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), dress: () => seasonMenu(), bake: bakeGame, teddy: teddyGame, tv: episodesMenu, fruit: () => pickGame('fruit'), veg: () => pickGame('veg'), shopping: shopGame, songs: songsMenu, stickers: stickerBook }[id]
     || (window.TOPICS[id] && (() => phraseGame(window.TOPICS[id])));
   await Promise.race([seq([['fifi', 'en', 'Yay! ' + t.en + '!'], ['pip', 'pl', 'Hura! ' + t.pl + '!']], my), wait(3200)]);
   opening = false;
@@ -1425,6 +1428,134 @@ function teddyGame() {
     if (!await seq([['pip', 'pl', `Kąpiemy misia, ${KID.plCall}!`], ...(bi() ? [['fifi', 'en', "Teddy is all muddy! Let's give him a bath!"]] : [])], my)) return;
     prompt();
   })();
+}
+
+
+/* ---------- 📺 episodes: little cartoons with pauses where Olivia joins in ---------- */
+function episodesMenu() {
+  const L = window.EPISODES;
+  if (L.length === 1) return playEpisode(L[0]);
+  const my = show(`${topbar(0, 0)}<div class="menu seasons">${L.map((g, i) => `<button class="tile" data-i="${i}" style="--s:#D9E8FF"><span class="e">${g.e}</span><span class="l">${g.title}</span></button>`).join('')}</div>${chars()}`);
+  bindHome(); $$('.seasons .tile').forEach(t => t.onclick = () => { unlockAudio(); playEpisode(L[+t.dataset.i]); });
+  seq([['pip', 'pl', 'Bajki! Którą oglądamy?'], ...(S.plOnly ? [] : [['fifi', 'en', 'Cartoons! Which one shall we watch?']])], my);
+}
+function playEpisode(ep) {
+  const WW = 1600, WH = 900, GROUND = 830;
+  const SIZE = { pip: 280, fifi: 290, sowa: 390, zuzia: 260, kuba: 265 };
+  const my = show(`<div class="ep" id="ep"><div class="ep-world" id="epw"><div class="ep-bg" id="epbg"></div><div class="ep-props" id="epp"></div></div>
+      <div class="ep-fade" id="epfade"></div><button class="ep-mic" id="epmic">🎤</button></div>${topbar(0, 0)}`);
+  bindHome(); M.stop(.5);
+  const world = $('#epw'), alive = () => $('#epw') === world;
+  const actors = {}; let cam = { x: WW / 2, y: WH / 2, z: 1 };
+  const kidT = t => t.replace(/\{kidCall\}/g, KID.plCall);
+  const lang = who => who === 'fifi' ? 'en' : 'pl';
+
+  /* camera: cover the screen (landscape), letterbox in portrait; zoom onto a character */
+  const applyCam = (dur = 900) => {
+    const W = innerWidth, H = innerHeight, portrait = W / H < 1.2;
+    const s0 = portrait ? Math.min(W / WW, H / WH) : Math.max(W / WW, H / WH), s = s0 * cam.z;
+    let tx = W / 2 - cam.x * s, ty = H / 2 - cam.y * s;
+    if (!portrait || cam.z > 1) { tx = Math.min(0, Math.max(W - WW * s, tx)); ty = Math.min(0, Math.max(H - WH * s, ty)); }
+    if (portrait && cam.z <= 1) ty = (H - WH * s) / 2;
+    world.style.transition = `transform ${dur}ms cubic-bezier(.45,.05,.3,1)`;
+    world.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`;
+  };
+  const camTo = (c, dur) => {
+    if (c === 'wide') cam = { x: WW / 2, y: 520, z: 1.08 };
+    else if (typeof c === 'string' && actors[c]) cam = { x: actors[c].x, y: GROUND - SIZE[c] * .55, z: 1.55 };
+    else if (typeof c === 'object') cam = Object.assign({ z: 1 }, c);
+    applyCam(dur);
+  };
+  addEventListener('resize', () => alive() && applyCam(0));
+
+  const place = (who, x, face) => {
+    let a = actors[who];
+    if (!a) {
+      const el = document.createElement('div'); el.className = 'actor'; el.innerHTML = `<div class="flip">${charHTML(who)}</div>`;
+      el.style.width = SIZE[who] + 'px'; world.appendChild(el); a = actors[who] = { el, x };
+    }
+    a.x = x; a.el.style.transition = 'none'; a.el.style.left = x + 'px'; a.el.style.top = GROUND + 'px';
+    if (face) a.el.classList.toggle('face-l', face === 'l');
+  };
+  const walk = (moves, dur) => {
+    Object.entries(moves).forEach(([who, x]) => {
+      const a = actors[who]; if (!a) return;
+      a.el.classList.toggle('face-l', x < a.x); a.x = x;
+      const c = $('.char', a.el); c.classList.add('walking');
+      a.el.style.transition = `left ${dur}ms linear`; a.el.style.left = x + 'px';
+      setTimeout(() => c.classList.remove('walking'), dur);
+    });
+    return wait(dur);
+  };
+  const emo = (who, e) => { const c = actors[who] && $('.char', actors[who].el); if (!c) return; c.classList.remove('happy', 'shy'); if (e) c.classList.add(e); };
+  const tower = async how => {
+    const P = $('#epp');
+    if (how === 'show') P.innerHTML = `<div class="tower" id="tower" style="left:1170px;top:${GROUND}px"></div>`;
+    const T = $('#tower'); if (!T) return;
+    if (how === 'build') for (const c of ['#E8505B', '#FFC93C', '#4CC373', '#5B8DEF', '#C77DFF', '#FF9A3C']) {
+      T.insertAdjacentHTML('beforeend', `<i style="background:${c}"></i>`); sfx('pop'); await wait(420); if (!alive()) return;
+    }
+    if (how === 'fall') { T.classList.add('fall'); await wait(350); sfx('plop'); setTimeout(() => sfx('plop'), 150); await wait(900); }
+  };
+  const setScene = async id => {
+    const f = $('#epfade'); f.classList.add('on'); await wait(450); if (!alive()) return;
+    Object.values(actors).forEach(a => a.el.remove()); Object.keys(actors).forEach(k => delete actors[k]);
+    $('#epp').innerHTML = ''; $('#epbg').innerHTML = window.EP_SCENES[id]; camTo('wide', 0);
+    await wait(80); f.classList.remove('on');
+  };
+
+  /* Olivia's turn: Fifi asks her, Pip whispers the words, she says them */
+  const ask = async a => {
+    camTo('fifi');
+    await seq([['fifi', 'en', a.fifi]]); if (!alive()) return;
+    if (actors.pip) { $('.char', actors.pip.el).classList.add('whisper'); }
+    await seq([['pip', 'pl', a.whisper]]); if (actors.pip) $('.char', actors.pip.el).classList.remove('whisper');
+    if (!alive()) return;
+    const mic = $('#epmic'); mic.classList.add('on');
+    let ok = false;
+    for (let tries = 0; tries < 2 && !ok && alive(); tries++) {
+      const r = await new Promise(res => {
+        let done = false; const fin = v => { if (done) return; done = true; Mic.unwatch(); clearTimeout(t); res(v); };
+        const t = setTimeout(() => fin('timeout'), 9000);
+        mic.onclick = () => fin('tap');
+        if (Recog.usable()) Recog.listen('pl-PL', 8500).then(rr => { if (!rr) return; if (rr.heard.length) fin(heardScore(rr.heard, a.want) >= WORD_OK ? 'ok' : 'almost'); else if (rr.sound) fin('voice'); });
+        else Mic.open().then(on => on && Mic.watch(() => fin('voice'), lv => mic.style.setProperty('--lv', (1 + Math.min(.35, lv * 7)).toFixed(3))));
+      });
+      if (!alive()) return;
+      if (r === 'ok' || r === 'voice' || r === 'tap') ok = true;
+      else if (r === 'almost') await seq([['pip', 'pl', `Prawie! ${a.whisper}`]]);
+      else if (tries === 0) await seq([['fifi', 'en', "Let's say it together!"], ['pip', 'pl', a.whisper]]);
+    }
+    mic.classList.remove('on');
+    if (ok) { cheer(); confettiSmall(); await seq([['pip', 'pl', `Brawo, ${KID.plCall}!`]]); }
+  };
+
+  const run = async () => {
+    for (const st of ep.steps) {
+      if (!alive()) return;
+      if (st.scene) { await setScene(st.scene); continue; }
+      if (st.put) { Object.entries(st.put).forEach(([w, o]) => place(w, o.x, o.face)); await wait(30); continue; }
+      if (st.walk) { await walk(st.walk, st.dur || 2000); continue; }
+      if (st.face) { Object.entries(st.face).forEach(([w, f]) => actors[w] && actors[w].el.classList.toggle('face-l', f === 'l')); continue; }
+      if (st.emo) { Object.entries(st.emo).forEach(([w, e]) => emo(w, e)); continue; }
+      if (st.wave) { const c = actors[st.wave] && $('.char', actors[st.wave].el); if (c) { c.classList.add('waving'); setTimeout(() => c.classList.remove('waving'), 2000); } continue; }
+      if (st.cheer) { Object.values(actors).forEach(a => { const c = $('.char', a.el); c.classList.remove('cheer'); void c.offsetWidth; c.classList.add('cheer'); }); continue; }
+      if (st.cam) { camTo(st.cam); if (!st.say) { await wait(700); continue; } }
+      if (st.say) { const [w, t] = st.say; if (!await seq([[w, lang(w), kidT(t)]], tk)) return; await wait(180); continue; }
+      if ('music' in st) { st.music ? M.play(st.music, .22) : M.stop(.8); continue; }
+      if (st.sfx) { sfx(st.sfx); continue; }
+      if (st.wait) { await wait(st.wait); continue; }
+      if (st.tower) { await tower(st.tower); continue; }
+      if (st.ask) { await ask(st.ask); continue; }
+      if (st.end) {
+        M.stop(.6); cheer(); confettiSmall(); await wait(1200); if (!alive()) return;
+        return reward(() => playEpisode(ep));
+      }
+    }
+  };
+  $('#again').onclick = () => playEpisode(ep);
+  camTo('wide', 0);
+  run();
 }
 
 /* ---------- songs: list + song screen with an animation ---------- */
