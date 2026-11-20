@@ -224,9 +224,28 @@ function paintHog(root) {
       for (let q = 0; q < 3; q++) col.set([k.r, k.g, k.b], (t + q) * 3);
     }
     g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.deleteAttribute('normal');
+    g.applyMatrix4(o.matrixWorld); o.position.set(0, 0, 0); o.quaternion.identity(); o.scale.set(1, 1, 1);   // shape now in model space
     o.material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
   });
+  root.updateMatrixWorld(true);
   return root;
+}
+/* cut the 4 little legs out of the hedgehog so they can trot; each leg pivots at its top */
+const HOG_LEGS = [[.0145, .0205], [-.0145, .0205], [.021, -.02], [-.021, -.02]], HOG_LEG_TOP = .008;
+function splitHogLegs(root) {
+  let mesh0 = null; root.traverse(o => { if (o.isMesh && !mesh0) mesh0 = o; }); if (!mesh0) return [];
+  const g = mesh0.geometry, pos = g.attributes.position, col = g.attributes.color;
+  const parts = [[], [], [], [], []];                       // 0 = body, 1..4 = legs
+  for (let t = 0; t < pos.count; t += 3) {
+    let ymax = -1, cx = 0, cz = 0; for (let k = 0; k < 3; k++) { ymax = Math.max(ymax, pos.getY(t + k)); cx += pos.getX(t + k) / 3; cz += pos.getZ(t + k) / 3; }
+    let leg = 0; if (ymax < HOG_LEG_TOP) HOG_LEGS.forEach(([x, z], i) => { if (Math.hypot(cx - x, cz - z) < .0085) leg = i + 1; });
+    parts[leg].push(t);
+  }
+  const build = (list, ox, oy, oz) => { const P = new Float32Array(list.length * 9), Cc = new Float32Array(list.length * 9);
+    list.forEach((t, i) => { for (let k = 0; k < 3; k++) { P.set([pos.getX(t + k) - ox, pos.getY(t + k) - oy, pos.getZ(t + k) - oz], (i * 3 + k) * 3); Cc.set([col.getX(t + k), col.getY(t + k), col.getZ(t + k)], (i * 3 + k) * 3); } });
+    const ng = new THREE.BufferGeometry(); ng.setAttribute('position', new THREE.BufferAttribute(P, 3)); ng.setAttribute('color', new THREE.BufferAttribute(Cc, 3)); return ng; };
+  mesh0.geometry = build(parts[0], 0, 0, 0);
+  return HOG_LEGS.map(([x, z], i) => { const m = new THREE.Mesh(build(parts[i + 1], x, HOG_LEG_TOP, z), mesh0.material); m.position.set(x, HOG_LEG_TOP, z); mesh0.parent.add(m); return m; });
 }
 
 function makeFox() {
@@ -408,7 +427,7 @@ export async function run(api) {
   let pipMode = 'off'; PIP.g.visible = false; scene.add(PIP.g);
   new GLTFLoader().load('./models/hedgehog.glb', gl => {      // Kamil's hedgehog, coloured in code (paintHog)
     if (!alive()) return;
-    const hog = paintHog(gl.scene), box = new THREE.Box3().setFromObject(hog), k = 1.0 / (box.max.y - box.min.y);
+    const hog = paintHog(gl.scene); PIP.hogLegs = splitHogLegs(hog); const box = new THREE.Box3().setFromObject(hog), k = 1.0 / (box.max.y - box.min.y);
     const holder = new THREE.Group(); holder.add(hog); holder.scale.setScalar(k); holder.rotation.y = PI;   // its face points +z, the game's front is -z
     hog.position.y -= box.min.y;
     PIP.m.children.forEach(c => c.visible = false); PIP.legs.forEach(l => l.visible = false); PIP.m.add(holder);
@@ -524,7 +543,9 @@ export async function run(api) {
     if (pipMode === 'waiting') { PIP.g.position.z += dz; PIP.g.position.y = Math.abs(Math.sin(t * 5)) * .12; if (PIP.g.position.z > -2.6) target = 0; }
     if (pipMode === 'running') { const rp = t * Math.max(speed, 3) * 1.8;
       PIP.g.position.set(3.35, (speed > .5 ? Math.abs(Math.sin(rp)) * .16 : 0), -.6 + Math.sin(t * .7) * .4); PIP.m.rotation.z = speed > .5 ? Math.sin(rp) * .06 : 0;
-      PIP.legs.forEach((l, i) => l.rotation.x = speed > .5 ? Math.sin(rp * 1.2 + (i % 2 ? PI : 0) + (i > 1 ? PI : 0)) * .7 : 0); }
+      PIP.legs.forEach((l, i) => l.rotation.x = speed > .5 ? Math.sin(rp * 1.2 + (i % 2 ? PI : 0) + (i > 1 ? PI : 0)) * .7 : 0);
+      (PIP.hogLegs || []).forEach((l, i) => l.rotation.x = speed > .5 ? Math.sin(rp * 1.2 + (i % 2 ? PI : 0) + (i > 1 ? PI : 0)) * .8 : 0); }
+    if (pipMode === 'waiting' && PIP.hogLegs) PIP.hogLegs.forEach((l, i) => l.rotation.x = Math.sin(t * 10 + i * 1.6) * .35);   // happy little tippy-taps
     if (!finished && !paused) { spawnZ += dz; while (spawnZ > -60) { spawnZ -= 6 + Math.random() * 4; spawn(spawnZ); } }
     renderer.render(scene, cam);
     raf = requestAnimationFrame(frame);
@@ -576,4 +597,4 @@ export async function run(api) {
   setTimeout(() => host.classList.remove('hints'), 4000);
   const faster = setInterval(() => { if (!alive()) return clearInterval(faster); if (!finished && !paused && target > 0) target = Math.min(10, target + .25); }, 8000);
 }
-export { makePip, paintHog };
+export { makePip, paintHog, splitHogLegs };
