@@ -544,3 +544,5 @@ body.sunny #screen::before { content: ''; position: fixed; inset: 0; background:
 .fr-bar i { display: block; height: 100%; background: #4CC373; border-radius: 2vmin; transition: width .3s; }
 .fr-goal.full { animation: hintPulse 1s ease-in-out 3; }
 .fr-goal.full .fr-bar i { background: #FFC93C; }
+.fr-fade { position: absolute; inset: 0; background: #FFF8EC; opacity: 0; transition: opacity .55s; pointer-events: none; z-index: 3; }
+.fr-fade.on { opacity: 1; }

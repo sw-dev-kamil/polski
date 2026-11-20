@@ -17,12 +17,24 @@ const FOX_URL = './models/fox.glb';
 const FOX_FRONT = 1;        // which way the model's nose points along z (+1 / -1); the game runs towards -z
 
 const LANES = [-2.1, 0, 2.1];
-const GOALS = { grzybek: 20, jagody: 30 };   // what fills the basket; acorns and strawberries are little bonuses
+/* two stretches: the pine forest (mushrooms + blueberries), then Pip joins and they run through
+   an autumn birch wood (pine cones + leaves). bonus = little extras that also turn up. */
+const STAGES = [
+  { goals: { grzybek: 20, jagody: 30 }, bonus: ['zoladz', 'poziomka'], ground: 0x3F7D48, leaves: false },
+  { goals: { szyszka: 10, lisc: 15 },   bonus: ['zoladz'],             ground: 0x6A8C45, leaves: true }
+];
+if (/quick/.test(location.hash)) STAGES.forEach(st => Object.keys(st.goals).forEach(k => st.goals[k] = 2));   // test switch: #quick
+const ROW = { jagody: [2, 4], grzybek: [1, 3], lisc: [1, 3], szyszka: [1, 2] };   // how many in a little row
+const COMPLETE = { grzybek: ['Wszystkie grzybki!', 'All the mushrooms!'], jagody: ['Wszystkie jagody!', 'All the blueberries!'],
+  szyszka: ['Wszystkie szyszki!', 'All the pine cones!'], lisc: ['Wszystkie liście!', 'All the leaves!'] };
+const CONE_ICON = '<svg viewBox="0 0 20 24" width="1em" height="1.1em" style="vertical-align:-.15em"><ellipse cx="10" cy="13" rx="7" ry="10" fill="#8A5A2E"/><path d="M4 9h12M3.5 13h13M4 17h12M6 21h8M10 3v20" stroke="#5B3A1C" stroke-width="1.4"/></svg>';
 const ITEMS = {
   grzybek: { e: '🍄', pl: 'Grzybek!', en: 'A mushroom!' },
   jagody:  { e: '🫐', pl: 'Jagody!',  en: 'Blueberries!' },
   zoladz:  { e: '🌰', pl: 'Żołądź!',  en: 'An acorn!' },
-  poziomka:{ e: '🍓', pl: 'Poziomka!', en: 'A wild strawberry!' }
+  poziomka:{ e: '🍓', pl: 'Poziomka!', en: 'A wild strawberry!' },
+  szyszka: { e: CONE_ICON, pl: 'Szyszka!', en: 'A pine cone!' },
+  lisc:    { e: '🍂', pl: 'Liść!',    en: 'A leaf!' }
 };
 const C = {
   fox: 0xE8742C, foxDark: 0xC75E1F, white: 0xF6EFE6, black: 0x2A211C, ear: 0x3A2A22,
@@ -31,6 +43,9 @@ const C = {
   log: 0x9A6338, logIn: 0xC89A64, logDark: 0x4A3020, stone: 0x77777F, stone2: 0x8A8A93,
   cap: 0xD9433B, stem: 0xF3E6CF, berry: 0x4656B8, acorn: 0xB07438, acornCap: 0x6E4A2C,
   straw: 0xE8424A, leaf: 0x3FAE4F, grass: 0x4FB04A, grass2: 0x62C25A, daisy: 0xFFFFFF, daisyC: 0xFFD23C, pinkF: 0xF07CB8,
+  birch: 0xF1EEE6, birchMark: 0x2E2A26, gold: 0xE8C23A, goldGreen: 0xC4C949, orange: 0xE07B2A, red: 0xC9452E,
+  cone1: 0x8A5A2E, cone2: 0x6E4523, leafO: 0xF08A24, leafR: 0xD9432F, leafY: 0xF2C230,
+  hog: 0x7A5034, hogSpike: 0x4E3322, hogFace: 0xEBCFA5, hogNose: 0x241A14, cheek: 0xF29C9C,
   cloud: 0xFFFFFF, cloud2: 0xE6EEF5, skyTop: 0x6FB6E8, skyLow: 0xBFE0E6
 };
 const FOG = C.skyLow;
@@ -112,6 +127,29 @@ const GEO = {
       P.push(part(new THREE.IcosahedronGeometry(rad, 0), r() > .35 ? C.cloud : C.cloud2, { p: [x, rad * .35, (r() - .5) * 1.2], s: [1.1, .8, 1], jitter: .12, seed: seed * 13 + i })); }
     return merge(P);
   },
+  birch(seed = 1) {   // autumn birch: white trunk with dark marks, golden faceted crown
+    const P = [part(Cyl(.17, .22, 3.6, 6), C.birch, { p: [0, 1.8, 0] })];
+    for (let i = 0; i < 7; i++) P.push(part(new THREE.BoxGeometry(.22, .05, .06), C.birchMark, { p: [Math.sin(i * 2.3) * .17, .5 + i * .42, Math.cos(i * 2.3) * .17], r: [0, i * 2.3, (i % 2 - .5) * .3] }));
+    [[0, 4.1, 0, 1.25], [.6, 3.5, .2, .9], [-.55, 3.6, -.25, .95], [0, 4.9, .1, .8]].forEach(([x, y, z, r], i) =>
+      P.push(part(new THREE.IcosahedronGeometry(r, 0), i % 2 ? C.goldGreen : C.gold, { p: [x, y, z], jitter: .08, seed: seed * 5 + i })));
+    return merge(P);
+  },
+  oak(color, seed = 1) {   // round autumn tree, orange or red
+    const P = [part(Cyl(.22, .32, 2.2, 6), C.trunk, { p: [0, 1.1, 0] })];
+    [[0, 3, 0, 1.5], [.9, 2.6, .3, 1.05], [-.9, 2.7, -.2, 1.1], [.1, 3.8, -.2, 1]].forEach(([x, y, z, r], i) =>
+      P.push(part(new THREE.IcosahedronGeometry(r, 0), i === 3 ? C.gold : color, { p: [x, y, z], jitter: .1, seed: seed * 3 + i })));
+    return merge(P);
+  },
+  szyszka() {
+    const P = []; [.1, .2, .24, .21, .15].forEach((r, i) => P.push(part(Cone(r, .2, 7), i % 2 ? C.cone2 : C.cone1, { p: [0, .12 + i * .12, 0], r: [PI, i * .4, 0] })));
+    P.push(part(Cone(.09, .16, 6), C.cone1, { p: [0, .78, 0] })); return merge(P);
+  },
+  lisc(color) {
+    const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.quadraticCurveTo(.34, .2, .3, .45); sh.quadraticCurveTo(.22, .72, 0, .95);
+    sh.quadraticCurveTo(-.22, .72, -.3, .45); sh.quadraticCurveTo(-.34, .2, 0, 0);
+    return merge([part(new THREE.ExtrudeGeometry(sh, { depth: .05, bevelEnabled: false, curveSegments: 3 }), color, { p: [0, .12, -.025] }),
+      part(Cyl(.02, .02, .2, 3), C.trunk, { p: [0, .05, 0] }), part(new THREE.BoxGeometry(.025, .7, .07), C.trunk, { p: [0, .48, 0] })]);
+  },
   grzybek() { return merge([part(Cyl(.14, .19, .38, 6), C.stem, { p: [0, .19, 0] }), part(Ball(.36, 7, 3), C.cap, { p: [0, .42, 0], s: [1, .7, 1] }),
     ...[[.17, .6, .14], [-.15, .58, .15], [.02, .66, -.17]].map(p => part(Ico(.06), C.white, { p }))]); },
   jagody() { return merge([...[[0, .28, 0], [.18, .24, .08], [-.17, .25, .06], [.05, .22, -.18], [-.06, .44, .02], [.12, .42, -.06]].map(p => part(Ico(.14), C.berry, { p })),
@@ -122,6 +160,29 @@ const GEO = {
 
 /* Fifi: a low-poly fox on four legs, built from parts so the code can animate them
    (Kamil's model later: body, head, tail and 4 legs as separate objects, origins at the joints) */
+/* Pip the hedgehog in 3D (front = -z), spikes on his back */
+function makePip() {
+  const g = new THREE.Group(), P = [];
+  P.push(part(Ball(.5, 7, 5), C.hog, { p: [0, .48, .05], s: [.85, .78, 1.05], jitter: .02, seed: 3 }));
+  const up = new THREE.Vector3(0, 1, 0), q = new THREE.Quaternion(), e = new THREE.Euler();
+  for (let row = 0; row < 5; row++) for (let a = 0; a < 9; a++) {
+    const th = (a / 8 - .5) * 2.6, ph = .25 + row * .3;                  // around the back, from the top towards the tail
+    const n = new THREE.Vector3(Math.sin(th) * Math.sin(ph + .3), Math.cos(ph + .3) * .9 + .25, Math.cos(th) * Math.sin(ph + .3) * .9 + .25).normalize();
+    if (n.z < -.35) continue;
+    q.setFromUnitVectors(up, n); e.setFromQuaternion(q, 'ZYX');
+    const base = new THREE.Vector3(n.x * .4, .48 + n.y * .36, .05 + n.z * .48);
+    P.push(part(Cone(.1, .42, 4), (row + a) % 3 ? C.hogSpike : C.hog, { p: [base.x + n.x * .17, base.y + n.y * .17, base.z + n.z * .17], r: [e.x, e.y, e.z] }));
+  }
+  P.push(part(Ball(.3, 7, 5), C.hogFace, { p: [0, .45, -.42], s: [1, .9, 1] }));
+  P.push(part(Cone(.14, .3, 6), C.hogFace, { p: [0, .4, -.72], r: [-PI / 2, 0, 0] }));
+  P.push(part(Ico(.07), C.hogNose, { p: [0, .41, -.88] }));
+  [-.13, .13].forEach(x => { P.push(part(Ico(.05), C.hogNose, { p: [x, .56, -.64] })); P.push(part(Ico(.06), C.cheek, { p: [x * 1.7, .4, -.6] }));
+    P.push(part(Ball(.08, 5, 3), C.hogFace, { p: [x * 1.9, .74, -.42] })); });
+  [[-.2, -.25], [.2, -.25], [-.2, .25], [.2, .25]].forEach(([x, z]) => P.push(part(Ball(.09, 5, 3), C.hogNose, { p: [x, .06, z], s: [1, .7, 1.3] })));
+  const m = mesh(merge(P)); g.add(m);
+  return { g, m };
+}
+
 function makeFox() {
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
   body.add(mesh(merge([
@@ -191,7 +252,7 @@ export async function run(api) {
   const tileGeo = () => { const g = new THREE.PlaneGeometry(TW, TILE, 1, 1); g.rotateX(-PI / 2); return g; };
 
   /* scenery kinds; shade = how its shadow is drawn: tiers [radius, height of the disc, height of the tip], trunk height */
-  const KINDS = [
+  const KINDS_A = [
     { geo: GEO.pine(1, 1), n: 24, side: [4.4, 22], sc: [.9, 1.4], shade: { trunk: 1.6, tiers: [0, 1, 2, 3].map(i => [1.45 - i * .28, 1.5 + i * .95, 1.5 + i * .95 + 1.55 - i * .12]) } },
     { geo: GEO.pine(1.25, 2), n: 20, side: [5.2, 25], sc: [.9, 1.3], shade: { trunk: 2, tiers: [0, 1, 2, 3].map(i => [1.45 - i * .28, 1.25 * (1.5 + i * .95), 1.25 * (1.5 + i * .95) + 1.55 - i * .12]) } },
     { geo: GEO.stump(), n: 4, side: [4, 10], sc: [.8, 1.2], shade: { tiers: [[.48, 0, .3], [.45, .6, .6]] } },
@@ -200,10 +261,23 @@ export async function run(api) {
     { geo: GEO.tuft(1), n: 10, side: [3.4, 8], sc: [.7, 1.3] },
     { geo: GEO.flowers(), n: 5, side: [3.6, 7], sc: [.8, 1.2] }
   ];
-  let ks = 777; const srnd = () => (ks = (ks * 16807) % 2147483647) / 2147483647;     // same forest every time
-  const layout = Array.from({ length: NT }, () => KINDS.map(K => Array.from({ length: K.n }, () => ({
-    x: (srnd() < .5 ? -1 : 1) * (K.side[0] + srnd() * (K.side[1] - K.side[0])), z: (srnd() - .5) * TILE,
-    s: K.sc[0] + srnd() * (K.sc[1] - K.sc[0]), ry: srnd() * 6 }))));
+  const BIRCH = { trunk: 3.4, tiers: [[1.3, 3.3, 4.6], [.8, 4.4, 5.6]] }, OAK = { trunk: 1.8, tiers: [[1.6, 2.2, 3.9], [1.1, 3.2, 4.6]] };
+  const KINDS_B = [
+    { geo: GEO.birch(1), n: 16, side: [4.4, 20], sc: [.9, 1.3], shade: BIRCH },
+    { geo: GEO.birch(2), n: 12, side: [5, 24], sc: [1, 1.4], shade: BIRCH },
+    { geo: GEO.oak(C.orange, 1), n: 8, side: [5, 22], sc: [.9, 1.3], shade: OAK },
+    { geo: GEO.oak(C.red, 2), n: 6, side: [6, 24], sc: [.9, 1.3], shade: OAK },
+    { geo: GEO.pine(1.2, 3), n: 6, side: [9, 25], sc: [.9, 1.3], shade: KINDS_A[1].shade },
+    { geo: GEO.rock(5), n: 6, side: [3.9, 12], sc: [.7, 1.6], shade: KINDS_A[3].shade },
+    { geo: GEO.stump(), n: 3, side: [4, 10], sc: [.8, 1.2], shade: KINDS_A[2].shade },
+    { geo: GEO.tuft(2), n: 12, side: [3.4, 8], sc: [.7, 1.3] }
+  ];
+  let stage = 0, KINDS = KINDS_A, layout = [];
+  const makeLayout = seed => { let ks = seed; const srnd = () => (ks = (ks * 16807) % 2147483647) / 2147483647;     // same forest every time
+    layout = Array.from({ length: NT }, () => KINDS.map(K => Array.from({ length: K.n }, () => ({
+      x: (srnd() < .5 ? -1 : 1) * (K.side[0] + srnd() * (K.side[1] - K.side[0])), z: (srnd() - .5) * TILE,
+      s: K.sc[0] + srnd() * (K.sc[1] - K.sc[0]), ry: srnd() * 6 })))); };
+  makeLayout(777);
 
   /* bake: paint every shadow that falls on tile i (from its own trees and its neighbours') into a texture */
   const PX = 15, CW = TW * PX, CH = TILE * PX;
@@ -227,7 +301,12 @@ export async function run(api) {
     });
     const c = document.createElement('canvas'); c.width = CW; c.height = CH; const y = c.getContext('2d');
     const hex = n => '#' + n.toString(16).padStart(6, '0');
-    y.fillStyle = hex(C.ground); y.fillRect(0, 0, CW, CH);                       // grass: one colour
+    y.fillStyle = hex(STAGES[stage].ground); y.fillRect(0, 0, CW, CH);           // grass: one colour
+    if (STAGES[stage].leaves) {                                                   // autumn: fallen leaves on the grass
+      let k = 99 + ti * 17; const r = () => (k = (k * 16807) % 2147483647) / 2147483647;
+      for (let i = 0; i < 700; i++) { const lx = r() * CW, ly = r() * CH; if (Math.abs(lx - CW / 2) < 3.6 * PX) continue;
+        y.fillStyle = hex([C.leafO, C.leafR, C.leafY, C.gold][i % 4]); y.beginPath(); y.ellipse(lx, ly, 5 + r() * 5, 2.5 + r() * 2.5, r() * 3, 0, 7); y.fill(); }
+    }
     const P0 = (TW / 2 - 3.3) * PX, PW = 6.6 * PX;
     y.fillStyle = hex(C.pathEdge); y.fillRect(P0 - .35 * PX, 0, PW + .7 * PX, CH); // soft edge of the path
     y.fillStyle = hex(C.path); y.fillRect(P0, 0, PW, CH);                          // path: one colour
@@ -242,7 +321,14 @@ export async function run(api) {
 
   /* scenery drawn as InstancedMesh (one draw call per kind), following its tile */
   const D = new THREE.Object3D();
-  const deco = KINDS.map((K, k) => { const im = new THREE.InstancedMesh(K.geo, MAT, K.n * NT); im.frustumCulled = false; scene.add(im); return { im, k }; });
+  let deco = [];
+  const buildDeco = () => { deco.forEach(d => { scene.remove(d.im); d.im.dispose(); });
+    deco = KINDS.map((K, k) => { const im = new THREE.InstancedMesh(K.geo, MAT, K.n * NT); im.frustumCulled = false; scene.add(im); return { im, k }; }); };
+  buildDeco();
+  const setStage = st => {            // swap the whole forest (behind a quick fade)
+    stage = st; KINDS = st ? KINDS_B : KINDS_A; makeLayout(777 + st * 4242); buildDeco();
+    tiles.forEach((m, i) => { m.material.map.dispose(); m.material.map = bake(i); m.material.needsUpdate = true; });
+  };
   const drawDeco = () => deco.forEach(({ im, k }) => {
     let n = 0; tiles.forEach((tm, ti) => layout[ti][k].forEach(o => {
       D.position.set(o.x, 0, tm.position.z + o.z); D.rotation.set(0, o.ry, 0); D.scale.setScalar(o.s); D.updateMatrix(); im.setMatrixAt(n++, D.matrix);
@@ -271,30 +357,37 @@ export async function run(api) {
   let lane = 1, fx = 0, fy = 0, vy = 0, stumble = 0;
   cam.position.set(0, 3.3, 6.4); cam.lookAt(0, 1, -5);
 
+  /* Pip: waits by the path after the first stretch, then runs alongside */
+  const PIP = makePip(), pBlob = blob(.42, 1.1); PIP.g.add(pBlob); pBlob.position.y = .03;
+  let pipMode = 'off'; PIP.g.visible = false; scene.add(PIP.g);
+  let paused = false;
+
   /* things on the path */
   const things = [];
   let speed = 0, target = 0, spawnZ = 0, count = 0, finished = false, started = false;
   const got = Object.fromEntries(Object.keys(ITEMS).map(k => [k, 0])), heardFirst = {};
   const PATHGEO = { log: GEO.log(), stump: GEO.stump(), stone: GEO.rock(7, 1.05) };
-  Object.keys(ITEMS).forEach(k => PATHGEO[k] = GEO[k]());
-  const done = k => got[k] >= GOALS[k], allDone = () => Object.keys(GOALS).every(done);
+  Object.keys(ITEMS).forEach(k => { if (k !== 'lisc') PATHGEO[k] = GEO[k](); });
+  const GOALS = () => STAGES[stage].goals;
+  const done = k => got[k] >= GOALS()[k], allDone = () => Object.keys(GOALS()).every(done);
+  PATHGEO.lisc = [GEO.lisc(C.leafO), GEO.lisc(C.leafR), GEO.lisc(C.leafY)];
   const drawHud = () => {
-    hud.innerHTML = `<div class="fr-goals">${Object.entries(GOALS).map(([k, n]) => `<div class="fr-goal${done(k) ? ' full' : ''}"><span>${ITEMS[k].e}</span>
+    hud.innerHTML = `<div class="fr-goals">${Object.entries(GOALS()).map(([k, n]) => `<div class="fr-goal${done(k) ? ' full' : ''}"><span>${ITEMS[k].e}</span>
         <div class="fr-bar"><i style="width:${Math.min(100, got[k] / n * 100)}%"></i></div><b>${Math.min(got[k], n)}/${n}</b></div>`).join('')}</div>
-      <div class="fr-got">${Object.entries(got).filter(([k, n]) => n && !GOALS[k]).map(([k, n]) => `<span>${ITEMS[k].e}<b>${n}</b></span>`).join('')}</div>`;
+      <div class="fr-got">${Object.entries(got).filter(([k, n]) => n && STAGES[stage].bonus.includes(k)).map(([k, n]) => `<span>${ITEMS[k].e}<b>${n}</b></span>`).join('')}</div>`;
   };
   drawHud();
   const spawn = z => {
-    const kinds = Object.keys(ITEMS), l = Math.floor(Math.random() * 3);
+    const l = Math.floor(Math.random() * 3);
     if (Math.random() < .27 && count > 0) {          // an obstacle (never at the very start)
       const ob = ['log', 'stump', 'stone'][Math.floor(Math.random() * 3)], m = mesh(PATHGEO[ob]);
       const b = blob(ob === 'log' ? .5 : .55, ob === 'log' ? 2 : 1.1); b.position.set(SHX * .25, .03, SHZ * .25); m.add(b);
       m.position.set(LANES[l], 0, z); if (ob !== 'log') m.rotation.y = Math.random() * 6; scene.add(m); things.push({ m, kind: ob, lane: l, z, item: false });
     } else {
-      const need = Object.keys(GOALS).filter(q => !done(q)), r = Math.random();
-      const k = r < .18 ? (Math.random() < .5 ? 'zoladz' : 'poziomka') : need.length ? (need.length > 1 ? (r < .5 ? 'grzybek' : 'jagody') : need[0]) : kinds[0];
-      const n = k === 'jagody' ? 2 + Math.floor(Math.random() * 3) : k === 'grzybek' ? 1 + Math.floor(Math.random() * 3) : 1;   // berries come in little rows
-      for (let i = 0; i < n; i++) { const m = mesh(PATHGEO[k]); m.add(blob(.3)); m.scale.setScalar(1.3); m.position.set(LANES[l], .15, z - i * 2.2); scene.add(m); things.push({ m, kind: k, lane: l, z: z - i * 2.2, item: true }); }
+      const need = Object.keys(GOALS()).filter(q => !done(q)), bonus = STAGES[stage].bonus, pick = a => a[Math.floor(Math.random() * a.length)];
+      const k = Math.random() < .18 || !need.length ? pick(bonus) : pick(need);
+      const [a, b] = ROW[k] || [1, 1], n = a + Math.floor(Math.random() * (b - a + 1));
+      for (let i = 0; i < n; i++) { const m = mesh(k === 'lisc' ? pick(PATHGEO.lisc) : PATHGEO[k]); m.add(blob(.3)); m.scale.setScalar(1.3); m.position.set(LANES[l], .15, z - i * 2.2); scene.add(m); things.push({ m, kind: k, lane: l, z: z - i * 2.2, item: true }); }
     }
   };
   for (let z = -18; z > -60; z -= 7) spawn(z);
@@ -361,10 +454,10 @@ export async function run(api) {
           const it = ITEMS[o.kind];
           if (!heardFirst[o.kind] && !S.plOnly) { heardFirst[o.kind] = 1; talk([['pip', 'pl', it.pl], ['fifi', 'en', it.en]]); }
           else talk([['pip', 'pl', it.pl]]);
-          if (GOALS[o.kind] && got[o.kind] === GOALS[o.kind]) {              // one kind complete
-            setTimeout(() => talk(o.kind === 'grzybek' ? [['pip', 'pl', 'Wszystkie grzybki!'], ['fifi', 'en', 'All the mushrooms!']] : [['pip', 'pl', 'Wszystkie jagody!'], ['fifi', 'en', 'All the blueberries!']]), 900);
+          if (GOALS()[o.kind] && got[o.kind] === GOALS()[o.kind] && !allDone()) {   // one kind complete
+            const [pl, en] = COMPLETE[o.kind]; setTimeout(() => talk([['pip', 'pl', pl], ['fifi', 'en', en]]), 900);
           }
-          if (allDone()) finish();
+          if (allDone()) stage === 0 ? meetPip() : finish();
           continue;
         } else if (fy < (o.kind === 'log' ? .55 : .75)) {
           o.done = true; stumble = .6; speed = 2; sfx('plop');
@@ -375,11 +468,37 @@ export async function run(api) {
     }
     for (let i = pop.length - 1; i >= 0; i--) { const p = pop[i]; p.v += dt; p.m.position.y += dt * 6; p.m.scale.multiplyScalar(1 - dt * 2.5); if (p.v > .5) { scene.remove(p.m); pop.splice(i, 1); } }
 
-    if (!finished) { spawnZ += dz; while (spawnZ > -60) { spawnZ -= 6 + Math.random() * 4; spawn(spawnZ); } }
+    if (pipMode === 'waiting') { PIP.g.position.z += dz; PIP.g.position.y = Math.abs(Math.sin(t * 5)) * .12; if (PIP.g.position.z > -4.2) target = 0; }
+    if (pipMode === 'running') { const rp = t * Math.max(speed, 3) * 1.8;
+      PIP.g.position.set(3.35, (speed > .5 ? Math.abs(Math.sin(rp)) * .16 : 0), -.6 + Math.sin(t * .7) * .4); PIP.m.rotation.z = speed > .5 ? Math.sin(rp) * .08 : 0; }
+    if (!finished && !paused) { spawnZ += dz; while (spawnZ > -60) { spawnZ -= 6 + Math.random() * 4; spawn(spawnZ); } }
     renderer.render(scene, cam);
     raf = requestAnimationFrame(frame);
   };
   raf = requestAnimationFrame(frame);
+
+  /* ---------- halfway: meet Pip, then the autumn wood ---------- */
+  let meeting = false;
+  const meetPip = async () => {
+    if (meeting) return; meeting = true; paused = true;
+    things.filter(o => o.z < -1).forEach(o => { scene.remove(o.m); o.done = true; o.z = 99; });
+    await wait(1200); if (!alive()) return;
+    PIP.g.position.set(2.7, 0, -34); PIP.g.rotation.y = PI; PIP.g.visible = true; pipMode = 'waiting'; target = 5;
+    while (talking) await wait(100);
+    await api.seq([['fifi', 'en', "Look! It's Pip!"]]);
+    while (alive() && speed > .3) await wait(100); if (!alive()) return;
+    pipMode = 'still'; PIP.g.position.y = 0;
+    await api.seq([['pip', 'pl', 'Cześć, Fifi!'], ...(S.plOnly ? [] : [['fifi', 'en', 'Pip! Our basket is full!']]),
+      ['pip', 'pl', 'Brawo! Teraz szukamy szyszek i liści!'], ...(S.plOnly ? [] : [['fifi', 'en', "Now let's find pine cones and leaves!"]]),
+      ['pip', 'pl', 'Biegniemy razem!'], ...(S.plOnly ? [] : [['fifi', 'en', "Let's run together!"]])]);
+    if (!alive()) return;
+    const fade = document.createElement('div'); fade.className = 'fr-fade'; host.appendChild(fade);
+    await wait(30); fade.classList.add('on'); await wait(600); if (!alive()) return;
+    setStage(1); things.forEach(o => scene.remove(o.m)); things.length = 0;
+    PIP.g.rotation.y = 0; pipMode = 'running'; spawnZ = -24; drawHud();
+    fade.classList.remove('on'); await wait(600); fade.remove();
+    paused = false; target = 7.5;
+  };
 
   /* ---------- start + finish ---------- */
   const finish = async () => {
@@ -388,6 +507,7 @@ export async function run(api) {
     await wait(1200); if (!alive()) return;
     vy = 6; api.confetti();
     while (talking) await wait(100);
+    PIP.m.rotation.z = 0;
     await api.seq([['pip', 'pl', 'Brawo! Pełny koszyk!'], ...(S.plOnly ? [] : [['fifi', 'en', 'Our basket is full! Well done, {kid}!']])]);
     if (!alive()) return;
     M.stop(.8); api.reward(() => api.again());
@@ -400,5 +520,5 @@ export async function run(api) {
   await api.seq([['fifi', 'en', 'Tap here and here to move me. Tap the middle to jump!']]);
   started = true; speed = 0; target = 7.5;
   setTimeout(() => host.classList.remove('hints'), 4000);
-  const faster = setInterval(() => { if (!alive()) return clearInterval(faster); if (!finished) target = Math.min(10, target + .25); }, 8000);
+  const faster = setInterval(() => { if (!alive()) return clearInterval(faster); if (!finished && !paused && target > 0) target = Math.min(10, target + .25); }, 8000);
 }
