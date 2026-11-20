@@ -482,3 +482,10 @@ body.sunny #screen::before { content: ''; position: fixed; inset: 0; background:
 @keyframes blockDrop { from { transform: translateY(-160px); opacity: 0; } }
 .tower.fall { animation: towerFall 1s cubic-bezier(.5,0,.8,.6) forwards; }
 @keyframes towerFall { to { transform: translate(-50%, -100%) rotate(84deg) translate(40px, 30px); } }
+.ep-title { position: absolute; inset: 0; z-index: 9; display: grid; place-items: center; background: radial-gradient(circle at 50% 45%, #FFF6D8, #FFD3E4 70%, #D9E8FF); transition: opacity .6s; }
+.ep-title.out { opacity: 0; }
+.ep-title-in { display: flex; align-items: center; gap: 3vmin; animation: cheer .8s cubic-bezier(.3,1.6,.5,1); }
+.ep-title-in .char { position: relative; width: 22vmin; left: auto; right: auto; bottom: auto; }
+.ep-title-in div:not(.char) { text-align: center; color: #5A3E8C; font-weight: 800; }
+.ep-title-in small { display: block; font-size: 4.5vmin; opacity: .75; }
+.ep-title-in b { display: block; font-size: 10vmin; text-shadow: 0 .6vmin 0 #fff; }

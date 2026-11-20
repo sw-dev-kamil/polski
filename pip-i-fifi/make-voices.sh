@@ -2,7 +2,8 @@
 # Pip & Fifi — make ALL recorded voice lines on the Mac (free Microsoft voices via edge-tts).
 #   Fifi = Maisie cartoon (en-GB-MaisieNeural, +15Hz, +5%)
 #   Pip  = Zofia cartoon  (pl-PL-ZofiaNeural,  +25Hz, +5%)
-#   Cartoons: Pani Sowa = Zofia grown-up, Zuzia = Zofia high, Kuba = Marek pitched up
+#   Cartoons: Pani Sowa = Zofia grown-up, Zuzia = Zofia high, Kuba = Marek pitched up,
+#             storyteller = Ryan (British man)
 # Run in Terminal:  bash make-voices.sh
 # → files in ~/Desktop/pip-fifi-audio, packed into ~/Desktop/pip-fifi-audio/ALL-VOICES.zip
 # Run it again after new content: it only makes the lines that are new.
@@ -24,7 +25,8 @@ lines = json.load(open(os.path.join(out, 'voice-lines.json'), encoding='utf-8'))
 VOICE = {'en': ('en-GB-MaisieNeural', '+15Hz', '+5%'), 'pl': ('pl-PL-ZofiaNeural', '+25Hz', '+5%'),
          'sowa': ('pl-PL-ZofiaNeural', '-6Hz', '-6%'),      # the teacher: calm grown-up lady
          'zuzia': ('pl-PL-ZofiaNeural', '+55Hz', '+8%'),    # little bunny girl
-         'kuba': ('pl-PL-MarekNeural', '+45Hz', '+6%')}     # little bear boy
+         'kuba': ('pl-PL-MarekNeural', '+45Hz', '+6%'),     # little bear boy
+         'nar': ('en-GB-RyanNeural', '+0Hz', '-6%')}        # the storyteller (English, warm British man)
 todo = [l for l in lines if not os.path.exists(os.path.join(out, l['id'] + '.mp3'))]
 print(f"{len(lines)} lines in the game, {len(todo)} to make now")
 done = 0; failed = []

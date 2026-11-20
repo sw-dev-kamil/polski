@@ -61,11 +61,11 @@ function pickVoices() {
 }
 if (hasTTS) { pickVoices(); speechSynthesis.onvoiceschanged = pickVoices; }
 const STYLE = {
-  natural: { fifi: 1.1, pip: 1.0, sowa: 0.95, zuzia: 1.5, kuba: 1.3 },
-  cartoon: { fifi: 1.45, pip: 1.25, sowa: 1.0, zuzia: 1.75, kuba: 1.5 },
-  extra:   { fifi: 1.7, pip: 1.5, sowa: 1.05, zuzia: 1.9, kuba: 1.7 }
+  natural: { fifi: 1.1, pip: 1.0, nar: 0.9, sowa: 0.95, zuzia: 1.5, kuba: 1.3 },
+  cartoon: { fifi: 1.45, pip: 1.25, nar: 0.95, sowa: 1.0, zuzia: 1.75, kuba: 1.5 },
+  extra:   { fifi: 1.7, pip: 1.5, nar: 1.0, sowa: 1.05, zuzia: 1.9, kuba: 1.7 }
 };
-const CAST_VOICE = { sowa: 'sowa', zuzia: 'zuzia', kuba: 'kuba' };   // own recorded voices in episodes
+const CAST_VOICE = { sowa: 'sowa', zuzia: 'zuzia', kuba: 'kuba', nar: 'nar' };   // nar = storyteller (English)   // own recorded voices in episodes
 
 let tk = 0; // changes whenever the screen changes → stops old speech sequences
 let mouthTimer = null;
@@ -1448,7 +1448,7 @@ function playEpisode(ep) {
   const world = $('#epw'), alive = () => $('#epw') === world;
   const actors = {}; let cam = { x: WW / 2, y: WH / 2, z: 1 };
   const kidT = t => t.replace(/\{kidCall\}/g, KID.plCall);
-  const lang = who => who === 'fifi' ? 'en' : 'pl';
+  const lang = who => (who === 'fifi' || who === 'nar') ? 'en' : 'pl';
 
   /* camera: cover the screen (landscape), letterbox in portrait; zoom onto a character */
   const applyCam = (dur = 900) => {
@@ -1534,6 +1534,14 @@ function playEpisode(ep) {
     for (const st of ep.steps) {
       if (!alive()) return;
       if (st.scene) { await setScene(st.scene); continue; }
+      if (st.title) {
+        const c = document.createElement('div'); c.className = 'ep-title';
+        c.innerHTML = `<div class="ep-title-in">${charHTML('fifi')}<div><small>Pip & Fifi</small><b>${ep.title}</b></div>${charHTML('pip')}</div>`;
+        $('#ep').appendChild(c); M.play('menu', .25);
+        await wait(500); if (!alive()) return;
+        await seq([['nar', 'en', 'Pip and Fifi!'], ['nar', 'en', ep.titleEn || ep.title]], tk); M.stop(.6);
+        c.classList.add('out'); await wait(600); c.remove(); continue;
+      }
       if (st.put) { Object.entries(st.put).forEach(([w, o]) => place(w, o.x, o.face)); await wait(30); continue; }
       if (st.walk) { await walk(st.walk, st.dur || 2000); continue; }
       if (st.face) { Object.entries(st.face).forEach(([w, f]) => actors[w] && actors[w].el.classList.toggle('face-l', f === 'l')); continue; }
