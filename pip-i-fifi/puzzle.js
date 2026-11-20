@@ -5,11 +5,11 @@
    To add a picture: put it in puzzles/ and add it to PICTURES below.
    ===================================================================== */
 export const PICTURES = [
-  { id: 'fifi-pip', src: './puzzles/fifi-pip.jpg', thumb: './puzzles/fifi-pip-thumb.jpg',
+  { id: 'fifi-pip', music: 'pzForest', src: './puzzles/fifi-pip.jpg', thumb: './puzzles/fifi-pip-thumb.jpg',
     done: [['pip', 'pl', 'To Fifi i Pip!'], ['fifi', 'en', "It's me and Pip!"]] },
-  { id: 'playground', src: './puzzles/playground.jpg', thumb: './puzzles/playground-thumb.jpg',
+  { id: 'playground', music: 'pzPlay', src: './puzzles/playground.jpg', thumb: './puzzles/playground-thumb.jpg',
     done: [['pip', 'pl', 'Plac zabaw!'], ['pip', 'pl', 'Huśtawka! Zjeżdżalnia!'], ['fifi', 'en', 'A swing and a slide!']] },
-  { id: 'nursery', src: './puzzles/nursery.jpg', thumb: './puzzles/nursery-thumb.jpg',
+  { id: 'nursery', music: 'pzNursery', src: './puzzles/nursery.jpg', thumb: './puzzles/nursery-thumb.jpg',
     done: [['pip', 'pl', 'W przedszkolu!'], ['pip', 'pl', 'Klocki!'], ['fifi', 'en', 'Building a tower with Pani Sowa!']] }
 ];
 export const SIZES = [{ n: 4, c: 2, r: 2 }, { n: 6, c: 3, r: 2 }, { n: 9, c: 3, r: 3 }];

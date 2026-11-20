@@ -1703,7 +1703,7 @@ function puzzleMenu() {
 function puzzleGame(P, pic, size) {
   const my = show(`<div class="pz" id="pz"></div>${topbar(0, 0)}`);
   bindHome(); $('#again').onclick = () => puzzleGame(P, pic, size);
-  M.play('menu', .14);
+  M.play(pic.music || 'menu', .2);
   P.run({ say, seq: lines => seq(lines, my), sfx, M, wait, S, pic, size, alive: () => my === tk && !!$('#pz'), confetti: confettiSmall, reward, again: () => puzzleGame(P, pic, size) });
 }
 

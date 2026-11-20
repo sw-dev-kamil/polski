@@ -7,7 +7,7 @@
 'use strict';
 const SEMI = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const hz = n => { const m = /^([A-G])(#|b)?(\d)$/.exec(n); const s = SEMI[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0); return 440 * Math.pow(2, (s + 12 * (+m[3] + 1) - 69) / 12); };
-const CH = { Em: ['E', 'G', 'B'], C: ['C', 'E', 'G'], F: ['F', 'A', 'C'], G: ['G', 'B', 'D'], Am: ['A', 'C', 'E'], D: ['D', 'F#', 'A'] };
+const CH = { Dm: ['D', 'F', 'A'], Bb: ['A#', 'D', 'F'], Em: ['E', 'G', 'B'], C: ['C', 'E', 'G'], F: ['F', 'A', 'C'], G: ['G', 'B', 'D'], Am: ['A', 'C', 'E'], D: ['D', 'F#', 'A'] };
 
 /* ---------- instruments ---------- */
 function env(c, out, t, peak, decay, attack = 0.004) {
@@ -59,6 +59,7 @@ function sleighBells(c, out, t, v) {          // jingle: a few bright metallic n
 
 /* ---------- songs: [bar, beat, note, beats] ---------- */
 function mel(bars) { const out = []; bars.forEach((bar, b) => { let beat = 0; bar.forEach(([n, len]) => { if (n) out.push([b, beat, n, len]); beat += len; }); }); return out; }
+const BPB = s => s.bpb || 4;      // beats per bar (3 for a waltz)
 
 /* Walking in: bouncy oom-pah march, 128 bpm */
 const WALK = {
@@ -270,10 +271,70 @@ const FOREST = {
   }
 };
 
+
+/* ---------- puzzle music: three calm loops, one per picture (original tunes) ---------- */
+/* 🌲 forest picture: a music-box waltz in F, birds now and then */
+const PZ_FOREST = {
+  bpm: 84, bpb: 3, bars: 16, loop: true,
+  chords: ['F', 'C', 'Dm', 'C', 'Bb', 'F', 'C', 'C', 'F', 'C', 'Dm', 'Bb', 'F', 'C', 'C', 'F'],
+  melody: mel([
+    [['A5', 1], ['C6', 1], ['A5', 1]], [['G5', 2], ['E5', 1]], [['F5', 1], ['A5', 1], ['D6', 1]], [['C6', 3]],
+    [['D6', 1], ['C6', 1], ['A#5', 1]], [['A5', 2], ['F5', 1]], [['G5', 1], ['A5', 1], ['G5', 1]], [['E5', 3]],
+    [['A5', 1], ['C6', 1], ['F6', 1]], [['E6', 2], ['C6', 1]], [['D6', 1], ['F6', 1], ['D6', 1]], [['A#5', 3]],
+    [['A5', 1], ['G5', 1], ['F5', 1]], [['G5', 1], ['A5', 1], ['E5', 1]], [['G5', 2], ['E5', 1]], [['F5', 3]]
+  ]),
+  play(c, out, b) {
+    this.melody.forEach(([bar, beat, n]) => { const t = (bar * 3 + beat) * b; glock(c, out, t, hz(n), .2); marimba(c, out, t, hz(n) / 2, .07); });
+    this.chords.forEach((ch, bar) => { const [r, third, fifth] = CH[ch], t0 = bar * 3 * b;
+      bass(c, out, t0, hz(r + '3'), .22, b * 1.6);
+      [1, 2].forEach(k => [third, fifth].forEach(n => marimba(c, out, t0 + k * b, hz(n + '4'), .05)));
+      if (bar % 4 === 2) bird(c, out, t0 + 1.5 * b, .035); });
+  }
+};
+/* 🛝 playground picture: a bouncy, skipping tune in C */
+const PZ_PLAY = {
+  bpm: 112, bars: 16, loop: true,
+  chords: ['C', 'G', 'Am', 'F', 'C', 'G', 'F', 'C', 'F', 'C', 'G', 'C', 'F', 'G', 'C', 'C'],
+  melody: mel([
+    [['E5', .5], ['G5', .5], ['C6', 1], ['G5', 1], ['E5', 1]], [['D5', .5], ['G5', .5], ['B5', 1], ['G5', 2]],
+    [['C6', .5], ['B5', .5], ['A5', 1], ['E5', 1], ['A5', 1]], [['A5', 1], ['G5', 1], ['F5', 2]],
+    [['E5', .5], ['G5', .5], ['C6', 1], ['E6', 1], ['C6', 1]], [['D6', 1], ['B5', 1], ['G5', 2]],
+    [['A5', .5], ['C6', .5], ['A5', 1], ['F5', 1], ['A5', 1]], [['G5', 3], [null, 1]],
+    [['F5', .5], ['A5', .5], ['C6', 1], ['A5', 1], ['F5', 1]], [['E5', .5], ['G5', .5], ['C6', 1], ['G5', 2]],
+    [['D5', .5], ['G5', .5], ['B5', 1], ['D6', 1], ['B5', 1]], [['C6', 2], ['G5', 2]],
+    [['A5', 1], ['C6', 1], ['F6', 1], ['C6', 1]], [['B5', 1], ['D6', 1], ['G6', 1], ['D6', 1]],
+    [['E6', 1], ['D6', .5], ['C6', .5], ['G5', 1], ['E5', 1]], [['C6', 3], [null, 1]]
+  ]),
+  play(c, out, b) {
+    this.melody.forEach(([bar, beat, n]) => { const t = (bar * 4 + beat) * b; marimba(c, out, t, hz(n), .34); });
+    this.chords.forEach((ch, bar) => { const [r, third, fifth] = CH[ch], t0 = bar * 4 * b;
+      [0, 1, 2, 3].forEach(k => { bass(c, out, t0 + k * b, hz((k % 2 ? fifth + '2' : r + '3')), .24, b * .6);
+        [third, fifth].forEach(n => marimba(c, out, t0 + (k + .5) * b, hz(n + '4'), .04)); shaker(c, out, t0 + (k + .5) * b, .04); });
+      [0, 2].forEach(k => boop(c, out, t0 + k * b, .22)); if (bar % 2) woodblock(c, out, t0 + 3.5 * b, .1); });
+  }
+};
+/* 🏫 nursery picture: a gentle lullaby in G, glockenspiel over soft rolling marimba */
+const PZ_NURSERY = {
+  bpm: 72, bars: 16, loop: true,
+  chords: ['G', 'Em', 'C', 'D', 'G', 'Em', 'Am', 'D', 'C', 'G', 'C', 'D', 'G', 'C', 'D', 'G'],
+  melody: mel([
+    [['B5', 2], ['D6', 2]], [['E6', 1], ['D6', 1], ['B5', 2]], [['C6', 2], ['E6', 1], ['C6', 1]], [['A5', 4]],
+    [['B5', 1], ['C6', 1], ['D6', 2]], [['G6', 1], ['E6', 1], ['B5', 2]], [['C6', 1], ['B5', 1], ['A5', 2]], [['F#5', 2], ['A5', 2]],
+    [['E6', 2], ['C6', 2]], [['D6', 2], ['B5', 2]], [['C6', 1], ['E6', 1], ['G6', 1], ['E6', 1]], [['D6', 4]],
+    [['B5', 1], ['A5', 1], ['G5', 2]], [['E5', 1], ['G5', 1], ['C6', 2]], [['A5', 1], ['F#5', 1], ['D6', 2]], [['G5', 4]]
+  ]),
+  play(c, out, b) {
+    this.melody.forEach(([bar, beat, n]) => { const t = (bar * 4 + beat) * b; glock(c, out, t, hz(n), .22); });
+    this.chords.forEach((ch, bar) => { const [r, third, fifth] = CH[ch], t0 = bar * 4 * b;
+      bass(c, out, t0, hz(r + '3'), .2, b * 3);
+      [r, third, fifth, third, r, third, fifth, third].forEach((n, k) => marimba(c, out, t0 + k * b / 2, hz(n + (k === 4 ? '5' : '4')), .06)); });
+  }
+};
+
 /* ---------- render a song into an AudioBuffer ---------- */
 const RATE = 24000;
 function render(song) {
-  const b = 60 / song.bpm, len = song.bars * 4 * b, tail = 2.5;
+  const b = 60 / song.bpm, len = song.bars * BPB(song) * b, tail = 2.5;
   const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
   const c = new OAC(1, Math.ceil((len + tail) * RATE), RATE);
   const comp = c.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 3; comp.connect(c.destination);
@@ -295,7 +356,7 @@ function render(song) {
 }
 
 /* ---------- player ---------- */
-const SONGS = { walk: WALK, menu: MENU, snow: SNOW, sun: SUN, train: TRAIN, forest: FOREST };
+const SONGS = { walk: WALK, menu: MENU, snow: SNOW, sun: SUN, train: TRAIN, forest: FOREST, pzForest: PZ_FOREST, pzPlay: PZ_PLAY, pzNursery: PZ_NURSERY };
 window.Music = {
   on: true, getCtx: () => null, songs: {}, ready: null,
   src: null, g: null, cur: null, base: 0, ducked: false, undo: 0,
