@@ -241,9 +241,26 @@ function splitHogLegs(root) {
     let leg = 0; if (ymax < HOG_LEG_TOP) HOG_LEGS.forEach(([x, z], i) => { if (Math.hypot(cx - x, cz - z) < .0085) leg = i + 1; });
     parts[leg].push(t);
   }
-  const build = (list, ox, oy, oz) => { const P = new Float32Array(list.length * 9), Cc = new Float32Array(list.length * 9);
+  /* close the cut: find edges used by only one triangle (the open rim) and fill each rim with a fan of triangles */
+  const capColor = new THREE.Color(0xC99A68), V = i => [pos.getX(i), pos.getY(i), pos.getZ(i)], key = a => a.map(n => n.toFixed(5)).join(',');
+  const caps = list => {
+    const edges = new Map();
+    list.forEach(t => { for (let k = 0; k < 3; k++) { const a = V(t + k), b = V(t + (k + 1) % 3), ka = key(a), kb = key(b), back = kb + '|' + ka;
+      if (edges.has(back)) edges.delete(back); else edges.set(ka + '|' + kb, [a, b]); } });
+    const rims = HOG_LEGS.map(() => []);
+    edges.forEach(([a, b]) => { const mx = (a[0] + b[0]) / 2, mz = (a[2] + b[2]) / 2; let best = -1, bd = .013;
+      HOG_LEGS.forEach(([x, z], i) => { const d = Math.hypot(mx - x, mz - z); if (d < bd) { bd = d; best = i; } }); if (best >= 0) rims[best].push([a, b]); });
+    const tris = [];
+    rims.forEach(r => { if (!r.length) return; const c = [0, 0, 0]; r.forEach(([a, b]) => { for (let q = 0; q < 3; q++) c[q] += (a[q] + b[q]) / (2 * r.length); });
+      r.forEach(([a, b]) => tris.push([b, a, c])); });
+    return tris;
+  };
+  const build = (list, ox, oy, oz) => {
+    const extra = caps(list), n = list.length + extra.length, P = new Float32Array(n * 9), Cc = new Float32Array(n * 9);
     list.forEach((t, i) => { for (let k = 0; k < 3; k++) { P.set([pos.getX(t + k) - ox, pos.getY(t + k) - oy, pos.getZ(t + k) - oz], (i * 3 + k) * 3); Cc.set([col.getX(t + k), col.getY(t + k), col.getZ(t + k)], (i * 3 + k) * 3); } });
+    extra.forEach((tri, j) => tri.forEach((v, k) => { const i = (list.length + j) * 3 + k; P.set([v[0] - ox, v[1] - oy, v[2] - oz], i * 3); Cc.set([capColor.r, capColor.g, capColor.b], i * 3); }));
     const ng = new THREE.BufferGeometry(); ng.setAttribute('position', new THREE.BufferAttribute(P, 3)); ng.setAttribute('color', new THREE.BufferAttribute(Cc, 3)); return ng; };
+  mesh0.material.side = THREE.DoubleSide;                    // no see-through gaps, whichever way a face points
   mesh0.geometry = build(parts[0], 0, 0, 0);
   return HOG_LEGS.map(([x, z], i) => { const m = new THREE.Mesh(build(parts[i + 1], x, HOG_LEG_TOP, z), mesh0.material); m.position.set(x, HOG_LEG_TOP, z); mesh0.parent.add(m); return m; });
 }
