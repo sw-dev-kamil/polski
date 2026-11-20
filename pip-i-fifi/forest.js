@@ -215,8 +215,8 @@ function paintHog(root) {
       let k;
       const all = (x, y, z, r) => v.every(p => near(p, x, y, z, r));                         // the whole triangle inside the bump
       if (all(0, .0232, .0488, .0055)) k = BLACK;                                              // nose
-      else if (all(.012, .030, .036, .0052) || all(-.012, .030, .036, .0052)) k = BLACK;         // eyes
-      else if (near(c, .012, .042, .030, .0055) || near(c, -.012, .042, .030, .0055)) k = EAR;     // ears
+      else if (all(.0108, .0298, .0368, .0063) || all(-.0108, .0298, .0368, .0063)) k = BLACK;     // eyes (the whole little eye bump)
+      else if (Math.abs(c.x) > .011 && Math.abs(c.x) < .025 && c.y > .037 && c.y < .051 && c.z > .021 && n.z > .55) k = TAN;   // ears: body colour
       else if (c.y < .0075) k = TAN2;                                                          // feet
       else if (n.y < -.5) k = TAN;                                                             // tummy
       else if (c.z > .018 && c.y < .038 && d.z > .5) k = TAN;                                  // face
