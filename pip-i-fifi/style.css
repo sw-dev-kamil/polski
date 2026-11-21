@@ -604,6 +604,6 @@ body.sunny #screen::before { content: ''; position: fixed; inset: 0; background:
 .pz-grid { display: grid; gap: .6vmin; width: 11vmin; }
 .pz-grid i { aspect-ratio: 1; background: #F0A33C; border-radius: .8vmin; }
 .pz-size .l { font-size: 7vmin; font-weight: 800; color: #5A3E8C; }
-.pz-pics { display: flex; flex-direction: column; gap: 2.2vmin; }
+.pz-pics { display: grid; grid-template-columns: repeat(2, auto); gap: 2.4vmin; }
 .pz-pics .pz-thumb { width: 22vmin; transform: none; opacity: .55; transition: all .3s cubic-bezier(.3,1.6,.5,1); cursor: pointer; }
 .pz-pics .pz-thumb.on { opacity: 1; transform: scale(1.08) rotate(-2deg); border-color: #FFC93C; }

@@ -331,6 +331,29 @@ const PZ_NURSERY = {
   }
 };
 
+/* 🍲 kitchen picture: a cosy little polka in G — oom-pah bass, marimba tune, glockenspiel sparkles */
+const PZ_KITCHEN = {
+  bpm: 104, bars: 16, loop: true,
+  chords: ['G', 'D', 'D', 'G', 'G', 'C', 'D', 'G', 'C', 'G', 'D', 'G', 'C', 'G', 'D', 'G'],
+  melody: mel([
+    [['D5', .5], ['G5', .5], ['B5', .5], ['G5', .5], ['D5', 1], ['G5', 1]], [['F#5', .5], ['A5', .5], ['D6', 1], ['A5', 2]],
+    [['F#5', .5], ['A5', .5], ['C6', .5], ['A5', .5], ['F#5', 1], ['A5', 1]], [['G5', 1], ['B5', 1], ['G5', 2]],
+    [['B5', .5], ['C6', .5], ['D6', 1], ['B5', 1], ['G5', 1]], [['C6', .5], ['D6', .5], ['E6', 1], ['C6', 1], ['G5', 1]],
+    [['A5', .5], ['B5', .5], ['C6', .5], ['B5', .5], ['A5', 1], ['F#5', 1]], [['G5', 3], [null, 1]],
+    [['E6', 1], ['C6', 1], ['G5', 1], ['C6', 1]], [['D6', 1], ['B5', 1], ['G5', 2]],
+    [['A5', .5], ['B5', .5], ['C6', 1], ['A5', 1], ['F#5', 1]], [['G5', 1], ['D5', 1], ['G5', 2]],
+    [['E5', .5], ['G5', .5], ['C6', 1], ['E6', 1], ['C6', 1]], [['D6', .5], ['C6', .5], ['B5', 1], ['G5', 1], ['B5', 1]],
+    [['A5', 1], ['D6', 1], ['C6', .5], ['A5', .5], ['F#5', 1]], [['G5', 3], [null, 1]]
+  ]),
+  play(c, out, b) {
+    this.melody.forEach(([bar, beat, n]) => { const t = (bar * 4 + beat) * b; marimba(c, out, t, hz(n), .34); if (beat === 0) glock(c, out, t, hz(n) * 2, .07); });
+    this.chords.forEach((ch, bar) => { const [r, third, fifth] = CH[ch], t0 = bar * 4 * b;
+      [0, 1, 2, 3].forEach(k => { bass(c, out, t0 + k * b, hz(k % 2 ? fifth + '2' : r + '3'), .26, b * .45);           // oom...
+        [r, third, fifth].forEach(n => marimba(c, out, t0 + (k + .5) * b, hz(n + '4'), .045)); });                  // ...pah
+      [0, 2].forEach(k => boop(c, out, t0 + k * b, .2)); shaker(c, out, t0 + 1.5 * b, .04); shaker(c, out, t0 + 3.5 * b, .04); });
+  }
+};
+
 /* ---------- render a song into an AudioBuffer ---------- */
 const RATE = 24000;
 function render(song) {
@@ -356,7 +379,7 @@ function render(song) {
 }
 
 /* ---------- player ---------- */
-const SONGS = { walk: WALK, menu: MENU, snow: SNOW, sun: SUN, train: TRAIN, forest: FOREST, pzForest: PZ_FOREST, pzPlay: PZ_PLAY, pzNursery: PZ_NURSERY };
+const SONGS = { walk: WALK, menu: MENU, snow: SNOW, sun: SUN, train: TRAIN, forest: FOREST, pzForest: PZ_FOREST, pzPlay: PZ_PLAY, pzNursery: PZ_NURSERY, pzKitchen: PZ_KITCHEN };
 window.Music = {
   on: true, getCtx: () => null, songs: {}, ready: null,
   src: null, g: null, cur: null, base: 0, ducked: false, undo: 0,
