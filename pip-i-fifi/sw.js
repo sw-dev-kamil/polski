@@ -1,5 +1,5 @@
 /* Offline cache. Bump VERSION when files change. */
-const VERSION = 'pipfifi-v53';
+const VERSION = 'pipfifi-v54';
 const AUDIO_CACHE = 'pipfifi-audio';   // recorded voice pieces never change (name = id) → kept across updates
 const FILES = ['./', './index.html', './style.css', './game.js', './characters.js', './content.js', './music.js', './dressup-art.js', './bake-art.js', './teddy-art.js', './episodes-art.js', './episodes.js', './forest.js', './walk.js', './puzzle.js', './vendor/three.module.min.js', './vendor/GLTFLoader.js', './vendor/BufferGeometryUtils.js', './models/fox.glb', './models/hedgehog.glb', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
