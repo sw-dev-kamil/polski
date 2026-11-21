@@ -538,6 +538,7 @@ const TILES = [
   { id: 'teacher',   e: '👩‍🏫', en: 'Hello, teacher', pl: 'Dzień dobry, Pani!', s: '#F7D0D9' },
   { id: 'arts',      e: '🎨', en: 'Arts and crafts', pl: 'Zajęcia',    s: '#FCE3B0' },
   { id: 'puzzle',    e: '🧩', en: 'Puzzles',       pl: 'Układanki',    s: '#FFE3B3' },
+  { id: 'colour',    e: '🖍️', en: 'Colouring',     pl: 'Kolorowanka',  s: '#FFD6E8' },
   { id: 'pipwalk',   e: '🦔', en: "Pip's walk",   pl: 'Spacer z Pipem', s: '#E8D9C4' },
   { id: 'forest',    e: '🌲', en: 'Forest run',    pl: 'W lesie',      s: '#CFEBC4' },
   { id: 'playground',e: '🛝', en: 'Playground',    pl: 'Plac zabaw',   s: '#CFEBC4' },
@@ -546,7 +547,7 @@ const TILES = [
 ];
 /* places on the main screen: each has its own scene and its own tiles (⭐ stickers everywhere) */
 const WORLDS = [
-  { id: 'home',     e: '🏠', pl: 'W domu',         en: 'At home',          tiles: ['tv', 'puzzle', 'bake', 'teddy', 'food', 'bath', 'bed', 'stickers'] },
+  { id: 'home',     e: '🏠', pl: 'W domu',         en: 'At home',          tiles: ['tv', 'puzzle', 'colour', 'bake', 'teddy', 'food', 'bath', 'bed', 'stickers'] },
   { id: 'nursery',  e: '🏫', pl: 'W przedszkolu',  en: 'At nursery',       tiles: ['tv', 'teacher', 'friends', 'needs', 'arts', 'dress', 'songs', 'stickers'] },
   { id: 'outside',  e: '🌳', pl: 'Na dworze',      en: 'Playing outside',  tiles: ['forest', 'pipwalk', 'playground', 'colours', 'animals', 'count', 'stickers'] },
   { id: 'shop',     e: '🛒', pl: 'W sklepie',      en: 'At the shop',      tiles: ['shopping', 'fruit', 'veg', 'stickers'] },
@@ -632,7 +633,7 @@ async function openTile(id, el) {
   hush(); const my = tk; M.stop(1.2);
   el.style.transform = 'scale(1.12)';
   const go = { colours: () => pickGame('colours'), animals: () => pickGame('animals'), count: countGame,
-    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), dress: () => seasonMenu(), bake: bakeGame, teddy: teddyGame, tv: episodesMenu, forest: forestGame, pipwalk: walkGame, puzzle: puzzleMenu, fruit: () => pickGame('fruit'), veg: () => pickGame('veg'), shopping: shopGame, songs: songsMenu, stickers: stickerBook }[id]
+    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), dress: () => seasonMenu(), bake: bakeGame, teddy: teddyGame, tv: episodesMenu, forest: forestGame, pipwalk: walkGame, puzzle: puzzleMenu, colour: colourMenu, fruit: () => pickGame('fruit'), veg: () => pickGame('veg'), shopping: shopGame, songs: songsMenu, stickers: stickerBook }[id]
     || (window.TOPICS[id] && (() => phraseGame(window.TOPICS[id])));
   await Promise.race([seq([['fifi', 'en', 'Yay! ' + t.en + '!'], ['pip', 'pl', 'Hura! ' + t.pl + '!']], my), wait(3200)]);
   opening = false;
@@ -1705,6 +1706,23 @@ function puzzleGame(P, pic, size) {
   bindHome(); $('#again').onclick = () => puzzleGame(P, pic, size);
   M.play(pic.music || 'menu', .2);
   P.run({ say, seq: lines => seq(lines, my), sfx, M, wait, S, pic, size, alive: () => my === tk && !!$('#pz'), confetti: confettiSmall, reward, again: () => puzzleGame(P, pic, size) });
+}
+
+/* ---------- 🖍️ colouring pages — colouring.js ---------- */
+function colourMenu() {
+  import('./colouring.js').then(C => {
+    if (C.PAGES.length === 1) return colourGame(C, C.PAGES[0]);
+    const my = show(`${topbar(0, 0)}<div class="pz-menu"><div class="pz-pics" style="--cols:${C.PAGES.length > 4 ? 3 : 2}">${C.PAGES.map((p, i) => `<img class="pz-thumb cl-thumb" data-i="${i}" src="${p.thumb}" alt="">`).join('')}</div></div>${chars()}`);
+    bindHome();
+    $$('.pz-thumb').forEach(t => t.onclick = () => { unlockAudio(); colourGame(C, C.PAGES[+t.dataset.i]); });
+    seq([['pip', 'pl', 'Kolorujemy!'], ...(S.plOnly ? [] : [['fifi', 'en', 'Which picture?']])], my);
+  }).catch(e => console.error(e));
+}
+function colourGame(C, page) {
+  const my = show(`<div class="cl" id="cl"></div>${topbar(0, 0)}`);
+  bindHome(); const ag = $('#again'); if (ag) ag.onclick = () => colourGame(C, page);
+  M.play(page.music || 'menu', .2);
+  C.run({ say, seq: lines => seq(lines, my), sfx, wait, S, save, page, alive: () => my === tk && !!$('#cl'), confetti: confettiSmall, reward, again: () => colourGame(C, page) });
 }
 
 /* ---------- songs: list + song screen with an animation ---------- */
