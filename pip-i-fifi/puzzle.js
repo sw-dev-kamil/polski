@@ -12,7 +12,9 @@ export const PICTURES = [
   { id: 'nursery', music: 'pzNursery', src: './puzzles/nursery.jpg', thumb: './puzzles/nursery-thumb.jpg',
     done: [['pip', 'pl', 'W przedszkolu!'], ['pip', 'pl', 'Klocki!'], ['fifi', 'en', 'Building a tower with Pani Sowa!']] },
   { id: 'kitchen', music: 'pzKitchen', src: './puzzles/kitchen.jpg', thumb: './puzzles/kitchen-thumb.jpg',
-    done: [['pip', 'pl', 'Mama i babcia!'], ['pip', 'pl', 'Gotujemy zupę!'], ['fifi', 'en', 'Cooking soup with my mummy and granny!']] }
+    done: [['pip', 'pl', 'Mama i babcia!'], ['pip', 'pl', 'Gotujemy zupę!'], ['fifi', 'en', 'Cooking soup with my mummy and granny!']] },
+  { id: 'friends', music: 'pzFriends', src: './puzzles/friends.jpg', thumb: './puzzles/friends-thumb.jpg',
+    done: [['pip', 'pl', 'Bawimy się razem!'], ['pip', 'pl', 'Huśtawka i zjeżdżalnia!'], ['fifi', 'en', 'Playing with all our friends!']] }
 ];
 export const SIZES = [{ n: 4, c: 2, r: 2 }, { n: 6, c: 3, r: 2 }, { n: 9, c: 3, r: 3 }];
 

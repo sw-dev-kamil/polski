@@ -1690,7 +1690,7 @@ function puzzleMenu() {
   import('./puzzle.js').then(P => {
     let pic = P.PICTURES[(S.pzPic || 0) % P.PICTURES.length];
     const my = show(`${topbar(0, 0)}<div class="pz-menu">
-      <div class="pz-pics">${P.PICTURES.map((p, i) => `<img class="pz-thumb${p === pic ? ' on' : ''}" data-i="${i}" src="${p.thumb}" alt="">`).join('')}</div>
+      <div class="pz-pics" style="--cols:${P.PICTURES.length > 4 ? 3 : 2}">${P.PICTURES.map((p, i) => `<img class="pz-thumb${p === pic ? ' on' : ''}" data-i="${i}" src="${p.thumb}" alt="">`).join('')}</div>
       <div class="pz-sizes">${P.SIZES.map((z, i) => `<button class="tile pz-size" data-i="${i}" style="--s:#FFE3B3">
         <span class="pz-grid" style="grid-template-columns:repeat(${z.c},1fr)">${'<i></i>'.repeat(z.n)}</span><span class="l">${z.n}</span></button>`).join('')}</div></div>${chars()}`);
     bindHome();

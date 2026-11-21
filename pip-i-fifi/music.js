@@ -7,7 +7,7 @@
 'use strict';
 const SEMI = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const hz = n => { const m = /^([A-G])(#|b)?(\d)$/.exec(n); const s = SEMI[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0); return 440 * Math.pow(2, (s + 12 * (+m[3] + 1) - 69) / 12); };
-const CH = { Dm: ['D', 'F', 'A'], Bb: ['A#', 'D', 'F'], Em: ['E', 'G', 'B'], C: ['C', 'E', 'G'], F: ['F', 'A', 'C'], G: ['G', 'B', 'D'], Am: ['A', 'C', 'E'], D: ['D', 'F#', 'A'] };
+const CH = { A: ['A', 'C#', 'E'], Dm: ['D', 'F', 'A'], Bb: ['A#', 'D', 'F'], Em: ['E', 'G', 'B'], C: ['C', 'E', 'G'], F: ['F', 'A', 'C'], G: ['G', 'B', 'D'], Am: ['A', 'C', 'E'], D: ['D', 'F#', 'A'] };
 
 /* ---------- instruments ---------- */
 function env(c, out, t, peak, decay, attack = 0.004) {
@@ -354,6 +354,29 @@ const PZ_KITCHEN = {
   }
 };
 
+/* 🎠 friends at the playground: a swinging see-saw tune in D, lilting 6/8 feel (3 quick beats per half bar) */
+const PZ_FRIENDS = {
+  bpm: 150, bpb: 6, bars: 16, loop: true,
+  chords: ['D', 'G', 'D', 'A', 'D', 'G', 'A', 'D', 'G', 'D', 'G', 'A', 'D', 'G', 'A', 'D'],
+  melody: mel([
+    [['F#5', 2], ['A5', 1], ['D6', 2], ['A5', 1]], [['B5', 2], ['G5', 1], ['B5', 3]],
+    [['A5', 2], ['F#5', 1], ['A5', 2], ['D6', 1]], [['C#6', 3], ['A5', 3]],
+    [['F#5', 2], ['A5', 1], ['D6', 2], ['F#6', 1]], [['E6', 2], ['D6', 1], ['B5', 3]],
+    [['C#6', 2], ['B5', 1], ['A5', 2], ['G5', 1]], [['F#5', 3], ['D5', 3]],
+    [['G5', 2], ['B5', 1], ['D6', 2], ['B5', 1]], [['A5', 2], ['F#5', 1], ['D5', 3]],
+    [['G5', 2], ['A5', 1], ['B5', 2], ['D6', 1]], [['C#6', 2], ['E6', 1], ['A5', 3]],
+    [['D6', 2], ['F#6', 1], ['A6', 2], ['F#6', 1]], [['G6', 2], ['E6', 1], ['B5', 3]],
+    [['A5', 2], ['C#6', 1], ['E6', 2], ['C#6', 1]], [['D6', 6]]
+  ]),
+  play(c, out, b) {
+    this.melody.forEach(([bar, beat, n]) => { const t = (bar * 6 + beat) * b; marimba(c, out, t, hz(n), .32); if (beat === 0) glock(c, out, t, hz(n) * 2, .08); });
+    this.chords.forEach((ch, bar) => { const [r, third, fifth] = CH[ch], t0 = bar * 6 * b;
+      [0, 3].forEach(k => { bass(c, out, t0 + k * b, hz((k ? fifth + '2' : r + '3')), .26, b * 1.6); boop(c, out, t0 + k * b, .18);
+        [1, 2].forEach(q => marimba(c, out, t0 + (k + q) * b, hz((q === 1 ? third : fifth) + '4'), .045)); });
+      shaker(c, out, t0 + 2 * b, .035); shaker(c, out, t0 + 5 * b, .035); if (bar % 4 === 3) bird(c, out, t0 + 4 * b, .03); });
+  }
+};
+
 /* ---------- render a song into an AudioBuffer ---------- */
 const RATE = 24000;
 function render(song) {
@@ -379,7 +402,7 @@ function render(song) {
 }
 
 /* ---------- player ---------- */
-const SONGS = { walk: WALK, menu: MENU, snow: SNOW, sun: SUN, train: TRAIN, forest: FOREST, pzForest: PZ_FOREST, pzPlay: PZ_PLAY, pzNursery: PZ_NURSERY, pzKitchen: PZ_KITCHEN };
+const SONGS = { walk: WALK, menu: MENU, snow: SNOW, sun: SUN, train: TRAIN, forest: FOREST, pzForest: PZ_FOREST, pzPlay: PZ_PLAY, pzNursery: PZ_NURSERY, pzKitchen: PZ_KITCHEN, pzFriends: PZ_FRIENDS };
 window.Music = {
   on: true, getCtx: () => null, songs: {}, ready: null,
   src: null, g: null, cur: null, base: 0, ducked: false, undo: 0,
