@@ -648,3 +648,14 @@ body.sunny #screen::before { content: ''; position: fixed; inset: 0; background:
 @media (orientation: portrait) { .cl.wide .cl-pal { grid-template-columns: repeat(6, 11vmin); } .cl.wide .cl-cr, .cl.wide .cl-btn { width: 11vmin; } }
 .pz-pics .cl-thumb { width: auto; height: 30vmin; opacity: 1; background: #fff; }
 .pz-pics .cl-thumb:active { transform: scale(.95); }
+
+/* 🎮 games screen: bigger tiles, the 3D games show a real picture */
+.menu.games-menu { max-width: 100vmin; gap: 4vmin 4.5vmin; top: 17vh; }
+.games-menu .tile { width: 27vmin; height: 27vmin; }
+.games-menu .tile .e { font-size: 13vmin; }
+.games-menu .tile .l { font-size: 3vmin; }
+.tile.pic { justify-content: flex-end; overflow: hidden; }
+.tile.pic img { position: absolute; top: 1.3vmin; left: 1.3vmin; width: calc(100% - 2.6vmin); height: calc(100% - 8.4vmin);
+  object-fit: cover; border-radius: 5vmin 5vmin 2vmin 2vmin; }
+.tile.pic .l { margin: 0 0 1.8vmin; }
+@media (orientation: portrait) { .menu.games-menu { top: 14vh; max-width: 80vw; } .games-menu .tile { width: 29vmin; height: 29vmin; } .games-menu .tile .e { font-size: 14vmin; } }

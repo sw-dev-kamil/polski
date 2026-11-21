@@ -537,21 +537,22 @@ const TILES = [
   { id: 'bed',       e: '🌙', en: 'Good night',    pl: 'Dobranoc',     s: '#D9D2F2' },
   { id: 'teacher',   e: '👩‍🏫', en: 'Hello, teacher', pl: 'Dzień dobry, Pani!', s: '#F7D0D9' },
   { id: 'arts',      e: '🎨', en: 'Arts and crafts', pl: 'Zajęcia',    s: '#FCE3B0' },
+  { id: 'games',     e: '🎮', en: 'Games',         pl: 'Gry',          s: '#FFE0B8' },
   { id: 'puzzle',    e: '🧩', en: 'Puzzles',       pl: 'Układanki',    s: '#FFE3B3' },
   { id: 'colour',    e: '🖍️', en: 'Colouring',     pl: 'Kolorowanka',  s: '#FFD6E8' },
-  { id: 'pipwalk',   e: '🦔', en: "Pip's walk",   pl: 'Spacer z Pipem', s: '#E8D9C4' },
-  { id: 'forest',    e: '🌲', en: 'Forest run',    pl: 'W lesie',      s: '#CFEBC4' },
+  { id: 'pipwalk',   e: '🦔', en: "Pip's walk",   pl: 'Spacer z Pipem', s: '#E8D9C4', img: './icons/tile-pipwalk.jpg' },
+  { id: 'forest',    e: '🌲', en: 'Forest run',    pl: 'W lesie',      s: '#CFEBC4', img: './icons/tile-forest.jpg' },
   { id: 'playground',e: '🛝', en: 'Playground',    pl: 'Plac zabaw',   s: '#CFEBC4' },
   { id: 'beach',     e: '🌊', en: 'At the beach',  pl: 'Plaża',        s: '#BFE6F2' },
   { id: 'icecream',  e: '🍦', en: 'Ice cream',     pl: 'Lody',         s: '#FAD3E6' }
 ];
 /* places on the main screen: each has its own scene and its own tiles (⭐ stickers everywhere) */
 const WORLDS = [
-  { id: 'home',     e: '🏠', pl: 'W domu',         en: 'At home',          tiles: ['tv', 'puzzle', 'colour', 'bake', 'teddy', 'food', 'bath', 'bed', 'stickers'] },
-  { id: 'nursery',  e: '🏫', pl: 'W przedszkolu',  en: 'At nursery',       tiles: ['tv', 'teacher', 'friends', 'needs', 'arts', 'dress', 'songs', 'stickers'] },
-  { id: 'outside',  e: '🌳', pl: 'Na dworze',      en: 'Playing outside',  tiles: ['forest', 'pipwalk', 'playground', 'colours', 'animals', 'count', 'stickers'] },
-  { id: 'shop',     e: '🛒', pl: 'W sklepie',      en: 'At the shop',      tiles: ['shopping', 'fruit', 'veg', 'stickers'] },
-  { id: 'holidays', e: '🏖️', pl: 'Wakacje',        en: 'Holidays',         tiles: ['beach', 'icecream', 'stickers'] }
+  { id: 'home',     e: '🏠', pl: 'W domu',         en: 'At home',          tiles: ['games', 'tv', 'food', 'bath', 'bed', 'stickers'] },
+  { id: 'nursery',  e: '🏫', pl: 'W przedszkolu',  en: 'At nursery',       tiles: ['games', 'tv', 'teacher', 'friends', 'needs', 'arts', 'dress', 'songs', 'stickers'] },
+  { id: 'outside',  e: '🌳', pl: 'Na dworze',      en: 'Playing outside',  tiles: ['games', 'playground', 'colours', 'animals', 'count', 'stickers'] },
+  { id: 'shop',     e: '🛒', pl: 'W sklepie',      en: 'At the shop',      tiles: ['games', 'shopping', 'fruit', 'veg', 'stickers'] },
+  { id: 'holidays', e: '🏖️', pl: 'Wakacje',        en: 'Holidays',         tiles: ['games', 'beach', 'icecream', 'stickers'] }
 ];
 const SCENES = {
   home: `<svg class="scene" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMax slice">
@@ -633,7 +634,7 @@ async function openTile(id, el) {
   hush(); const my = tk; M.stop(1.2);
   el.style.transform = 'scale(1.12)';
   const go = { colours: () => pickGame('colours'), animals: () => pickGame('animals'), count: countGame,
-    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), dress: () => seasonMenu(), bake: bakeGame, teddy: teddyGame, tv: episodesMenu, forest: forestGame, pipwalk: walkGame, puzzle: puzzleMenu, colour: colourMenu, fruit: () => pickGame('fruit'), veg: () => pickGame('veg'), shopping: shopGame, songs: songsMenu, stickers: stickerBook }[id]
+    friends: () => phraseGame(window.FRIENDS), needs: () => phraseGame(window.NEEDS), dress: () => seasonMenu(), bake: bakeGame, teddy: teddyGame, tv: episodesMenu, forest: forestGame, pipwalk: walkGame, puzzle: puzzleMenu, colour: colourMenu, games: gamesMenu, fruit: () => pickGame('fruit'), veg: () => pickGame('veg'), shopping: shopGame, songs: songsMenu, stickers: stickerBook }[id]
     || (window.TOPICS[id] && (() => phraseGame(window.TOPICS[id])));
   await Promise.race([seq([['fifi', 'en', 'Yay! ' + t.en + '!'], ['pip', 'pl', 'Hura! ' + t.pl + '!']], my), wait(3200)]);
   opening = false;
@@ -1706,6 +1707,21 @@ function puzzleGame(P, pic, size) {
   bindHome(); $('#again').onclick = () => puzzleGame(P, pic, size);
   M.play(pic.music || 'menu', .2);
   P.run({ say, seq: lines => seq(lines, my), sfx, M, wait, S, pic, size, alive: () => my === tk && !!$('#pz'), confetti: confettiSmall, reward, again: () => puzzleGame(P, pic, size) });
+}
+
+/* ---------- 🎮 all the games together on one screen ---------- */
+const GAMES = ['puzzle', 'colour', 'forest', 'pipwalk', 'bake', 'teddy'];
+function gamesMenu() {
+  const W = curWorld();
+  const my = show(`<div class="world-bg w-${W.id}">${SCENES[W.id] || ''}</div>${topbar(0, 0)}
+    <div class="menu world-menu games-menu">${GAMES.map(id => TILES.find(t => t.id === id)).map(t => `<button class="tile${t.img ? ' pic' : ''}" data-t="${t.id}" style="--s:${t.s}">
+      ${t.img ? `<img src="${t.img}" alt="">` : `<span class="e">${t.e}</span>`}<span class="l">${t.pl}</span></button>`).join('')}</div>
+    ${charHTML('fifi', 'left')}${charHTML('pip', 'right')}`);
+  $$('.char').forEach(c => c.style.width = '26vmin');
+  bindHome();
+  $$('.tile').forEach(b => b.onclick = () => openTile(b.dataset.t, b));
+  M.play('menu', .32);
+  seq([['pip', 'pl', 'W co się bawimy?'], ...(S.plOnly ? [] : [['fifi', 'en', 'Which game?']])], my);
 }
 
 /* ---------- 🖍️ colouring pages — colouring.js ---------- */
