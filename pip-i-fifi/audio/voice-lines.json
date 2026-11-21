@@ -1378,5 +1378,14 @@
 {"id":"d37f7f67","lang":"en","text":"Tap where Zuzia should hop.","v":"nar"},
 {"id":"d8159b4a","lang":"en","text":"Find three carrots!","v":"nar"},
 {"id":"fea325e6","lang":"en","text":"Zuzia is so happy!","v":"nar"},
-{"id":"3b24d661","lang":"en","text":"A carrot!","v":"nar"}
+{"id":"3b24d661","lang":"en","text":"A carrot!","v":"nar"},
+{"id":"56e899d7","lang":"pl","text":"Strumyk!"},
+{"id":"f26d683f","lang":"pl","text":"Most!"},
+{"id":"f15994f7","lang":"pl","text":"Strumyk!","v":"zuzia"},
+{"id":"9fdee2df","lang":"pl","text":"Most!","v":"zuzia"},
+{"id":"346a1512","lang":"en","text":"That's a brook!","v":"nar"},
+{"id":"98c5e644","lang":"en","text":"Let's find the bridge.","v":"nar"},
+{"id":"23a21b9b","lang":"en","text":"A bridge!","v":"nar"},
+{"id":"f67d20eb","lang":"en","text":"Over we go!","v":"nar"},
+{"id":"dec5538e","lang":"en","text":"They grow in the meadow.","v":"nar"}
 ]
