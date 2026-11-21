@@ -7,7 +7,7 @@
    who is hiding behind a tree with her tail sticking out.
    Shares models and helpers with forest.js.
    ===================================================================== */
-import { THREE, GEO, MAT, C, ITEMS, mesh, blob, makePip, paintHog, splitHogLegs } from './forest.js';
+import { THREE, GEO, MAT, C, ITEMS, mesh, blob, makePip, paintHog, splitHogLegs, loadZuzia } from './forest.js';
 import { GLTFLoader } from './vendor/GLTFLoader.js';
 
 const PI = Math.PI, HALF = 19;                 // the clearing is 38 × 38 units
@@ -15,7 +15,8 @@ const BX = 15.5, BZN = -15.5, BZS = 10;       // where Pip can walk (the south e
 const MISSIONS = [
   { kind: 'grzybek', n: 3, pl: 'Znajdź trzy grzybki!', en: 'Find three mushrooms!' },
   { kind: 'szyszka', n: 3, pl: 'Znajdź trzy szyszki!', en: 'Find three pine cones!' },
-  { kind: 'lisc',    n: 3, pl: 'Znajdź trzy liście!',  en: 'Find three leaves!' }
+  { kind: 'lisc',    n: 3, pl: 'Znajdź trzy liście!',  en: 'Find three leaves!' },
+  { kind: 'marchewka', n: 3, who: 'zuzia', pl: 'Znajdź trzy marchewki!', en: 'Find three carrots!' }    // Olivia steers Zuzia for this one
 ];
 const COUNT = ['Jeden!', 'Dwa!', 'Trzy!'];
 const SUN = { x: -9, y: 14, z: 16 }, SHX = -SUN.x / SUN.y, SHZ = -SUN.z / SUN.y;
@@ -119,8 +120,22 @@ export async function run(api) {
     const holder = new THREE.Group(); holder.add(hog); holder.scale.setScalar(k); holder.rotation.y = PI; hog.position.y -= box.min.y;
     PIP.m.children.forEach(c => c.visible = false); PIP.legs.forEach(l => l.visible = false); PIP.m.add(holder);
   }, undefined, e => console.warn('hedgehog model', e));
-  let px = 0, pz = 6, face = PI, tx = px, tz = pz;
+  let px = 0, pz = 6, face = PI, tx = px, tz = pz;     // the character Olivia is steering (Pip, or Zuzia during the carrot hunt)
   PIP.g.position.set(px, 0, pz);
+  let ctl = 'pip';
+  const pipS = { x: 0, z: 6, face: PI, ph: 0, moving: false }, zuS = { x: 0, z: 0, face: 0, ph: 0, moving: false, on: false };
+  const ZU = loadZuzia(1.6, alive); ZU.add(blob(.5, 1.1)); ZU.children[ZU.children.length - 1].position.y = .03; ZU.visible = false; scene.add(ZU);
+  /* the one not being steered trots/hops after the other */
+  const follow = (st, x, z, dist, dt) => { const dx = x - st.x, dz = z - st.z, d = Math.hypot(dx, dz); st.moving = d > dist;
+    if (st.moving) { const sp = Math.min(d - dist, 3 * dt); st.x += dx / d * sp; st.z += dz / d * sp;
+      blockers.forEach(b => { const ox = st.x - b.x, oz = st.z - b.z, od = Math.hypot(ox, oz), min = b.r + .45; if (od < min && od > 0) { st.x = b.x + ox / od * min; st.z = b.z + oz / od * min; } });
+      const want = Math.atan2(-dx, -dz); let df = want - st.face; while (df > PI) df -= PI * 2; while (df < -PI) df += PI * 2; st.face += df * Math.min(1, dt * 6); st.ph += dt * 11; } };
+  const drawPip = (x, z, f, moving, ph) => { PIP.g.position.set(x, moving ? Math.abs(Math.sin(ph)) * .08 : 0, z); PIP.g.rotation.y = f;
+    PIP.m.rotation.z = moving ? Math.sin(ph) * .06 : 0;
+    const legA = (i, a) => moving ? Math.sin(ph + (i % 2 ? PI : 0) + (i > 1 ? PI : 0)) * a : 0;
+    PIP.legs.forEach((l, i) => l.rotation.x = legA(i, .7)); (PIP.hogLegs || []).forEach((l, i) => l.rotation.x = legA(i, .8)); };
+  const drawZu = (x, z, f, moving, ph) => { const up = moving ? Math.abs(Math.sin(ph * .7)) : 0;   // hop, hop
+    ZU.position.set(x, up * .45, z); ZU.rotation.y = f; ZU.scale.set(1, moving ? .9 + up * .14 : 1, 1); };
 
   /* ---------- Fifi hides behind a tree, tail sticking out ---------- */
   let hideTree = objs.find(o => (o.kind === 'pine' || o.kind === 'birch') && Math.abs(o.x) < BX - 2 && o.z > BZN + 2.5 && o.z < -6);
@@ -182,10 +197,10 @@ export async function run(api) {
       walkPh += dt * 11;
     } else marker.visible = false;
     marker.scale.setScalar(1 + Math.sin(t * 6) * .08);
-    PIP.g.position.set(px, moving ? Math.abs(Math.sin(walkPh)) * .08 : 0, pz); PIP.g.rotation.y = face;
-    PIP.m.rotation.z = moving ? Math.sin(walkPh) * .06 : 0;
-    const legA = (i, a) => moving ? Math.sin(walkPh + (i % 2 ? PI : 0) + (i > 1 ? PI : 0)) * a : 0;
-    PIP.legs.forEach((l, i) => l.rotation.x = legA(i, .7)); (PIP.hogLegs || []).forEach((l, i) => l.rotation.x = legA(i, .8));
+    if (ctl === 'pip') { drawPip(px, pz, face, moving, walkPh);
+      if (zuS.on) { follow(zuS, px, pz, 1.6, dt); drawZu(zuS.x, zuS.z, zuS.face, zuS.moving, zuS.ph); } }
+    else { drawZu(px, pz, face, moving, walkPh);
+      follow(pipS, px, pz, 2.2, dt); drawPip(pipS.x, pipS.z, pipS.face, pipS.moving, pipS.ph); }
 
     /* camera follows from above and behind */
     camPos.lerp(new THREE.Vector3(px, CAM[0], pz + CAM[1]), Math.min(1, dt * 2.5)); cam.position.copy(camPos); cam.lookAt(camPos.x, 0, camPos.z - CAM[1] - 1);
@@ -206,9 +221,9 @@ export async function run(api) {
       if (dd < .9 && phase === 'find') {
         if (m && o.kind === m.kind) {
           o.got = true; o.fly = 0; found++; sfx('ding'); drawHud();
-          const n = found; talking = false;
-          talk([['pip', 'pl', ITEMS[o.kind].pl], ['pip', 'pl', COUNT[n - 1]]]).then(() => { if (n === m.n) nextMission(); });
-        } else if (t - o.said > 4) { o.said = t; talk([['pip', 'pl', ITEMS[o.kind].pl], ...(S.plOnly || o.toldEn ? [] : [['nar', 'en', ITEMS[o.kind].en]])]); o.toldEn = true; }
+          const n = found, who = m.who || 'pip'; talking = false;
+          talk([[who, 'pl', ITEMS[o.kind].pl], [who, 'pl', COUNT[n - 1]]]).then(() => { if (n === m.n) nextMission(); });
+        } else if (t - o.said > 4) { o.said = t; talk([[ctl, 'pl', ITEMS[o.kind].pl], ...(S.plOnly || o.toldEn ? [] : [['nar', 'en', ITEMS[o.kind].en]])]); o.toldEn = true; }
       }
     });
     things.forEach(o => { if (o.got && o.fly !== undefined && o.fly < 1) { o.fly += dt * 2; o.m.position.y += dt * 5; o.m.scale.multiplyScalar(1 - dt * 3); if (o.fly >= 1) scene.remove(o.m); } });
@@ -224,10 +239,30 @@ export async function run(api) {
   raf = requestAnimationFrame(frame);
 
   /* ---------- story ---------- */
+  const take = who => {            // hand the steering to Pip or Zuzia
+    const from = ctl === 'pip' ? pipS : zuS; Object.assign(from, { x: px, z: pz, face });
+    const to = who === 'pip' ? pipS : zuS; ctl = who; px = tx = to.x; pz = tz = to.z; face = to.face; marker.visible = false;
+  };
   const nextMission = async () => {
+    const prev = MISSIONS[mi];
     mi++; found = 0;
+    if (prev && prev.who === 'zuzia') {                 // carrots found: Zuzia says thank you, steering goes back to Pip
+      phase = 'intro'; await api.seq([['zuzia', 'pl', 'Dziękuję!'], ['zuzia', 'pl', 'Mniam!'], ...(S.plOnly ? [] : [['nar', 'en', 'Zuzia is so happy!']])]);
+      if (!alive()) return; take('pip'); phase = 'find';
+    }
     if (mi < MISSIONS.length) {
-      await wait(400); if (!alive()) return; sfx('spark'); drawHud(); await api.seq(missionLines(MISSIONS[mi]));
+      const m = MISSIONS[mi];
+      if (m.who === 'zuzia') {                          // Zuzia hops in and asks for help
+        phase = 'intro'; Object.assign(zuS, { x: Math.max(-BX, Math.min(BX, px + 5)), z: Math.max(BZN, pz - 5), face: 0, on: true }); ZU.visible = true;
+        await wait(1800); if (!alive()) return;
+        await api.seq([['zuzia', 'pl', 'Cześć, Pip!'], ['zuzia', 'pl', 'Szukam marchewek!'], ['zuzia', 'pl', 'Pomożesz mi?'],
+          ...(S.plOnly ? [] : [['nar', 'en', 'Now you can help Zuzia! Tap where Zuzia should hop.']])]);
+        if (!alive()) return;
+        for (let i = 0; i < 4; i++) { const [x, z] = spot(1.2); addThing('marchewka', x, z); }
+        take('zuzia'); phase = 'find';
+      }
+      await wait(400); if (!alive()) return; sfx('spark'); drawHud();
+      await api.seq(m.who === 'zuzia' ? [['zuzia', 'pl', m.pl], ...(S.plOnly ? [] : [['nar', 'en', m.en]])] : missionLines(m));
       return;
     }
     phase = 'fifi'; drawHud(); FIFI.visible = true;

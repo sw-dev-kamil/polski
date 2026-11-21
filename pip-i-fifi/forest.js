@@ -21,12 +21,14 @@ const LANES = [-2.1, 0, 2.1];
    an autumn birch wood (pine cones + leaves). bonus = little extras that also turn up. */
 const STAGES = [
   { goals: { grzybek: 20, jagody: 30 }, bonus: ['zoladz', 'poziomka'], ground: 0x3F7D48, leaves: false },
-  { goals: { szyszka: 10, lisc: 15 },   bonus: ['zoladz'],             ground: 0x6A8C45, leaves: true }
+  { goals: { szyszka: 10, lisc: 15 },   bonus: ['zoladz'],             ground: 0x6A8C45, leaves: true },
+  { goals: { marchewka: 8, kwiatek: 8 }, bonus: ['poziomka'],          ground: 0x6DB44E, flowers: true }   // Zuzia's meadow
 ];
 if (/quick/.test(location.hash)) STAGES.forEach(st => Object.keys(st.goals).forEach(k => st.goals[k] = 2));   // test switch: #quick
-const ROW = { jagody: [2, 4], grzybek: [1, 3], lisc: [1, 3], szyszka: [1, 2] };   // how many in a little row
+const ROW = { jagody: [2, 4], grzybek: [1, 3], lisc: [1, 3], szyszka: [1, 2], marchewka: [1, 3], kwiatek: [1, 3] };   // how many in a little row
 const COMPLETE = { grzybek: ['Wszystkie grzybki!', 'All the mushrooms!'], jagody: ['Wszystkie jagody!', 'All the blueberries!'],
-  szyszka: ['Wszystkie szyszki!', 'All the pine cones!'], lisc: ['Wszystkie liście!', 'All the leaves!'] };
+  szyszka: ['Wszystkie szyszki!', 'All the pine cones!'], lisc: ['Wszystkie liście!', 'All the leaves!'],
+  marchewka: ['Wszystkie marchewki!', 'All the carrots!'], kwiatek: ['Wszystkie kwiatki!', 'All the flowers!'] };
 const CONE_ICON = '<svg viewBox="0 0 20 24" width="1em" height="1.1em" style="vertical-align:-.15em"><ellipse cx="10" cy="13" rx="7" ry="10" fill="#8A5A2E"/><path d="M4 9h12M3.5 13h13M4 17h12M6 21h8M10 3v20" stroke="#5B3A1C" stroke-width="1.4"/></svg>';
 const ITEMS = {
   grzybek: { e: '🍄', pl: 'Grzybek!', en: 'A mushroom!' },
@@ -34,7 +36,9 @@ const ITEMS = {
   zoladz:  { e: '🌰', pl: 'Żołądź!',  en: 'An acorn!' },
   poziomka:{ e: '🍓', pl: 'Poziomka!', en: 'A wild strawberry!' },
   szyszka: { e: CONE_ICON, pl: 'Szyszka!', en: 'A pine cone!' },
-  lisc:    { e: '🍂', pl: 'Liść!',    en: 'A leaf!' }
+  lisc:    { e: '🍂', pl: 'Liść!',    en: 'A leaf!' },
+  marchewka: { e: '🥕', pl: 'Marchewka!', en: 'A carrot!' },
+  kwiatek: { e: '🌼', pl: 'Kwiatek!', en: 'A flower!' }
 };
 const C = {
   fox: 0xE8742C, foxDark: 0xC75E1F, white: 0xF6EFE6, black: 0x2A211C, ear: 0x3A2A22,
@@ -156,6 +160,16 @@ const GEO = {
     return merge([part(new THREE.ExtrudeGeometry(sh, { depth: .05, bevelEnabled: false, curveSegments: 3 }), color, { p: [0, .12, -.025] }),
       part(Cyl(.02, .02, .2, 3), C.trunk, { p: [0, .05, 0] }), part(new THREE.BoxGeometry(.025, .7, .07), C.trunk, { p: [0, .48, 0] })]);
   },
+  marchewka() {
+    return merge([part(Cone(.17, .62, 6), 0xF08A24, { p: [0, .38, 0], r: [PI, 0, 0], jitter: .01, seed: 41 }),
+      ...[-.4, 0, .4].map((a, i) => part(Cone(.05, .34, 3), i === 1 ? C.grass2 : C.grass, { p: [Math.sin(a) * .06, .82, 0], r: [0, 0, a] }))]);
+  },
+  kwiatek(color) {
+    const P = [part(Cyl(.025, .03, .5, 4), C.grass, { p: [0, .25, 0] }), part(Cone(.07, .22, 3), C.grass2, { p: [.08, .2, 0], r: [0, 0, -.7] }),
+      part(Ico(.07), 0xFFD23C, { p: [0, .56, .02] })];
+    for (let i = 0; i < 6; i++) { const a = i / 6 * PI * 2; P.push(part(Ball(.08, 5, 3), color, { p: [Math.cos(a) * .12, .56 + Math.sin(a) * .12, 0], s: [1, 1, .4] })); }
+    return merge(P);
+  },
   grzybek() { return merge([part(Cyl(.14, .19, .38, 6), C.stem, { p: [0, .19, 0] }), part(Ball(.36, 7, 3), C.cap, { p: [0, .42, 0], s: [1, .7, 1] }),
     ...[[.17, .6, .14], [-.15, .58, .15], [.02, .66, -.17]].map(p => part(Ico(.06), C.white, { p }))]); },
   jagody() { return merge([...[[0, .28, 0], [.18, .24, .08], [-.17, .25, .06], [.05, .22, -.18], [-.06, .44, .02], [.12, .42, -.06]].map(p => part(Ico(.14), C.berry, { p })),
@@ -236,6 +250,44 @@ function paintHog(root) {
   root.updateMatrixWorld(true);
   return root;
 }
+/* Zuzia (models/zuzia.glb) comes painted by Kamil: grey body, white tail and paw tips, purple-pink ears/nose/mouth, black eyes.
+   In the game: the grey becomes a pinkish white, the purple a softer pink; white and black stay. Each triangle gets one colour.
+   Her face points 35° off +z in the model; ZUZIA_TURN turns her to face the game's -z. */
+const ZUZIA_TURN = PI - .61;
+function paintBunny(root) {
+  root.updateMatrixWorld(true);
+  const BODY = new THREE.Color(0xF8E8EC), BODY2 = new THREE.Color(0xF2DEE3), WHITE = new THREE.Color(0xFFFFFF), PINK = new THREE.Color(0xF58DB4), BLACK = new THREE.Color(0x000000);
+  const pick = (r, g, b) => r < .1 && g < .1 && b < .1 ? BLACK : (r > .95 && g > .95 && b > .95) ? WHITE : (r - g > .25) ? PINK : null;   // null = the grey body
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry; o.geometry = g;
+    const src = g.attributes.color, col = new Float32Array(g.attributes.position.count * 3), cnt = new Map();
+    for (let t = 0; t < g.attributes.position.count; t += 3) {
+      cnt.clear(); let best = null, bn = 0;
+      for (let k = 0; k < 3; k++) {                         // the triangle takes the colour most of its corners have
+        const kk = pick(src.getX(t + k), src.getY(t + k), src.getZ(t + k)) || ((t / 3) % 3 ? BODY : BODY2);   // the painted values, as stored
+        const n = (cnt.get(kk) || 0) + 1; cnt.set(kk, n); if (n > bn) { bn = n; best = kk; }
+      }
+      for (let q = 0; q < 3; q++) col.set([best.r, best.g, best.b], (t + q) * 3);
+    }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.deleteAttribute('normal');
+    g.applyMatrix4(o.matrixWorld); o.position.set(0, 0, 0); o.quaternion.identity(); o.scale.set(1, 1, 1);
+    o.material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide, emissive: 0x3E3638 });   // light fur stays light in the shade
+  });
+  root.updateMatrixWorld(true);
+  return root;
+}
+/* load Zuzia, coloured, about `h` tall, facing the game's -z; returns a holder group (empty until loaded) */
+function loadZuzia(h, alive) {
+  const holder = new THREE.Group(), inner = new THREE.Group(); holder.add(inner); inner.rotation.y = ZUZIA_TURN;
+  new GLTFLoader().load('./models/zuzia.glb', gl => {
+    if (alive && !alive()) return;
+    const b = paintBunny(gl.scene), box = new THREE.Box3().setFromObject(b), k = h / (box.max.y - box.min.y);
+    b.position.set(-.001, -box.min.y, .0016); inner.add(b); inner.scale.setScalar(k);   // centre her body over the spot
+  }, undefined, e => console.warn('zuzia model', e));
+  return holder;
+}
+
 /* cut the 4 little legs out of the hedgehog so they can trot; each leg pivots at its top */
 const HOG_LEGS = [[.0145, .0205], [-.0145, .0205], [.021, -.02], [-.021, -.02]], HOG_LEG_TOP = .008;
 function splitHogLegs(root) {
@@ -360,6 +412,15 @@ export async function run(api) {
     { geo: GEO.stump(), n: 3, side: [4, 10], sc: [.8, 1.2], shade: KINDS_A[2].shade },
     { geo: GEO.tuft(2), n: 12, side: [3.4, 8], sc: [.7, 1.3] }
   ];
+  const KINDS_C = [
+    { geo: GEO.oak(C.pine1, 3), n: 10, side: [6, 24], sc: [.9, 1.3], shade: OAK },
+    { geo: GEO.oak(C.pine3, 4), n: 8, side: [7, 25], sc: [.9, 1.3], shade: OAK },
+    { geo: GEO.birch(3), n: 6, side: [8, 24], sc: [1, 1.3], shade: BIRCH },
+    { geo: GEO.bush(), n: 8, side: [4.2, 12], sc: [.8, 1.3], shade: { tiers: [[.75, 0, .4], [.6, .4, .8]] } },
+    { geo: GEO.rock(6), n: 3, side: [4.5, 12], sc: [.6, 1.2], shade: KINDS_A[3].shade },
+    { geo: GEO.flowers(), n: 30, side: [3.5, 14], sc: [.9, 1.4] },
+    { geo: GEO.tuft(3), n: 22, side: [3.4, 12], sc: [.7, 1.3] }
+  ];
   let stage = 0, KINDS = KINDS_A, layout = [];
   const makeLayout = seed => { let ks = seed; const srnd = () => (ks = (ks * 16807) % 2147483647) / 2147483647;     // same forest every time
     layout = Array.from({ length: NT }, () => KINDS.map(K => Array.from({ length: K.n }, () => ({
@@ -390,6 +451,11 @@ export async function run(api) {
     const c = document.createElement('canvas'); c.width = CW; c.height = CH; const y = c.getContext('2d');
     const hex = n => '#' + n.toString(16).padStart(6, '0');
     y.fillStyle = hex(STAGES[stage].ground); y.fillRect(0, 0, CW, CH);           // grass: one colour
+    if (STAGES[stage].flowers) {                                                  // meadow: little flowers all over the grass
+      let k = 77 + ti * 13; const r = () => (k = (k * 16807) % 2147483647) / 2147483647;
+      for (let i = 0; i < 900; i++) { const lx = r() * CW, ly = r() * CH; if (Math.abs(lx - CW / 2) < 3.6 * PX) continue;
+        y.fillStyle = ['#FFFFFF', '#FFD23C', '#F27BB8', '#B58CF0', '#FFFFFF'][i % 5]; y.beginPath(); y.arc(lx, ly, 2.5 + r() * 2.5, 0, 7); y.fill(); }
+    }
     if (STAGES[stage].leaves) {                                                   // autumn: fallen leaves on the grass
       let k = 99 + ti * 17; const r = () => (k = (k * 16807) % 2147483647) / 2147483647;
       for (let i = 0; i < 700; i++) { const lx = r() * CW, ly = r() * CH; if (Math.abs(lx - CW / 2) < 3.6 * PX) continue;
@@ -414,7 +480,7 @@ export async function run(api) {
     deco = KINDS.map((K, k) => { const im = new THREE.InstancedMesh(K.geo, MAT, K.n * NT); im.frustumCulled = false; scene.add(im); return { im, k }; }); };
   buildDeco();
   const setStage = st => {            // swap the whole forest (behind a quick fade)
-    stage = st; KINDS = st ? KINDS_B : KINDS_A; makeLayout(777 + st * 4242); buildDeco();
+    stage = st; KINDS = [KINDS_A, KINDS_B, KINDS_C][st]; makeLayout(777 + st * 4242); buildDeco();
     tiles.forEach((m, i) => { m.material.map.dispose(); m.material.map = bake(i); m.material.needsUpdate = true; });
   };
   const drawDeco = () => deco.forEach(({ im, k }) => {
@@ -462,7 +528,8 @@ export async function run(api) {
   let speed = 0, target = 0, spawnZ = 0, count = 0, finished = false, started = false;
   const got = Object.fromEntries(Object.keys(ITEMS).map(k => [k, 0])), heardFirst = {};
   const PATHGEO = { log: GEO.log(), stump: GEO.stump(), stone: GEO.rock(7, 1.05) };
-  Object.keys(ITEMS).forEach(k => { if (k !== 'lisc') PATHGEO[k] = GEO[k](); });
+  Object.keys(ITEMS).forEach(k => { if (k !== 'lisc' && k !== 'kwiatek') PATHGEO[k] = GEO[k](); });
+  PATHGEO.kwiatek = [GEO.kwiatek(0xF27BB8), GEO.kwiatek(0xB58CF0), GEO.kwiatek(0xFFFFFF)];
   const GOALS = () => STAGES[stage].goals;
   const done = k => got[k] >= GOALS()[k], allDone = () => Object.keys(GOALS()).every(done);
   PATHGEO.lisc = [GEO.lisc(C.leafO), GEO.lisc(C.leafR), GEO.lisc(C.leafY)];
@@ -482,7 +549,7 @@ export async function run(api) {
       const need = Object.keys(GOALS()).filter(q => !done(q)), bonus = STAGES[stage].bonus, pick = a => a[Math.floor(Math.random() * a.length)];
       const k = Math.random() < .18 || !need.length ? pick(bonus) : pick(need);
       const [a, b] = ROW[k] || [1, 1], n = a + Math.floor(Math.random() * (b - a + 1));
-      for (let i = 0; i < n; i++) { const m = mesh(k === 'lisc' ? pick(PATHGEO.lisc) : PATHGEO[k]); m.add(blob(.3)); m.scale.setScalar(1.3); m.position.set(LANES[l], .15, z - i * 2.2); scene.add(m); things.push({ m, kind: k, lane: l, z: z - i * 2.2, item: true }); }
+      for (let i = 0; i < n; i++) { const m = mesh(Array.isArray(PATHGEO[k]) ? pick(PATHGEO[k]) : PATHGEO[k]); m.add(blob(.3)); m.scale.setScalar(1.3); m.position.set(LANES[l], .15, z - i * 2.2); scene.add(m); things.push({ m, kind: k, lane: l, z: z - i * 2.2, item: true }); }
     }
   };
   for (let z = -18; z > -60; z -= 7) spawn(z);
@@ -547,12 +614,13 @@ export async function run(api) {
           o.done = true; things.splice(i, 1); pop.push({ m: o.m, v: 0 });
           count++; got[o.kind]++; sfx('ding'); drawHud();
           const it = ITEMS[o.kind];
-          if (!heardFirst[o.kind] && !S.plOnly) { heardFirst[o.kind] = 1; talk([['pip', 'pl', it.pl], ['fifi', 'en', it.en]]); }
-          else talk([['pip', 'pl', it.pl]]);
+          const namer = o.kind === 'marchewka' ? 'zuzia' : 'pip';          // Zuzia names her carrots herself
+          if (!heardFirst[o.kind] && !S.plOnly) { heardFirst[o.kind] = 1; talk([[namer, 'pl', it.pl], ['fifi', 'en', it.en]]); }
+          else talk([[namer, 'pl', it.pl]]);
           if (GOALS()[o.kind] && got[o.kind] === GOALS()[o.kind] && !allDone()) {   // one kind complete
-            const [pl, en] = COMPLETE[o.kind]; setTimeout(() => talk([['pip', 'pl', pl], ['fifi', 'en', en]]), 900);
+            const [pl, en] = COMPLETE[o.kind]; setTimeout(() => talk([[namer, 'pl', pl], ['fifi', 'en', en]]), 900);
           }
-          if (allDone()) stage === 0 ? meetPip() : finish();
+          if (allDone()) stage === 0 ? meetPip() : stage === 1 ? meetZuzia() : finish();
           continue;
         } else if (fy < (o.kind === 'log' ? .55 : .75)) {
           o.done = true; stumble = .6; speed = 2; sfx('plop');
@@ -568,6 +636,9 @@ export async function run(api) {
       PIP.g.position.set(3.35, (speed > .5 ? Math.abs(Math.sin(rp)) * .16 : 0), -.6 + Math.sin(t * .7) * .4); PIP.m.rotation.z = speed > .5 ? Math.sin(rp) * .06 : 0;
       PIP.legs.forEach((l, i) => l.rotation.x = speed > .5 ? Math.sin(rp * 1.2 + (i % 2 ? PI : 0) + (i > 1 ? PI : 0)) * .7 : 0);
       (PIP.hogLegs || []).forEach((l, i) => l.rotation.x = speed > .5 ? Math.sin(rp * 1.2 + (i % 2 ? PI : 0) + (i > 1 ? PI : 0)) * .8 : 0); }
+    if (zuMode === 'waiting') { ZU.position.z += dz; ZU.position.y = Math.abs(Math.sin(t * 6)) * .3; if (ZU.position.z > -2.6) target = 0; }
+    if (zuMode === 'running') { const hp = t * Math.max(speed, 3) * 1.1, up = Math.abs(Math.sin(hp));   // hop, hop, hop
+      ZU.position.set(-3.35, speed > .5 ? up * .55 : 0, -.4 + Math.sin(t * .6) * .4); ZU.scale.set(1, speed > .5 ? .88 + up * .16 : 1, 1); }
     if (pipMode === 'waiting' && PIP.hogLegs) PIP.hogLegs.forEach((l, i) => l.rotation.x = Math.sin(t * 10 + i * 1.6) * .35);   // happy little tippy-taps
     if (!finished && !paused) { spawnZ += dz; while (spawnZ > -60) { spawnZ -= 6 + Math.random() * 4; spawn(spawnZ); } }
     renderer.render(scene, cam);
@@ -598,6 +669,29 @@ export async function run(api) {
     paused = false; target = 7.5;
   };
 
+  /* ---------- after the autumn wood: Zuzia, and her flower meadow ---------- */
+  const ZU = loadZuzia(1.7, alive), zBlob = blob(.5, 1.1); zBlob.position.y = .03; ZU.add(zBlob);
+  ZU.visible = false; scene.add(ZU); let zuMode = 'off', meetingZ = false;
+  const meetZuzia = async () => {
+    if (meetingZ) return; meetingZ = true; paused = true;
+    things.filter(o => o.z < -1).forEach(o => { scene.remove(o.m); o.done = true; o.z = 99; });
+    await wait(1200); if (!alive()) return;
+    ZU.position.set(-3.0, 0, -32); ZU.rotation.y = PI + .5; ZU.visible = true; zuMode = 'waiting'; target = 5;
+    while (talking) await wait(100);
+    await api.seq([['fifi', 'en', "Look! It's Zuzia!"]]);
+    while (alive() && speed > .3) await wait(100); if (!alive()) return;
+    zuMode = 'still'; ZU.position.y = 0;
+    await api.seq([['zuzia', 'pl', 'Cześć, Fifi! Cześć, Pip!'], ['zuzia', 'pl', 'Chodźcie na łąkę!'], ['zuzia', 'pl', 'Szukamy marchewek i kwiatków!'],
+      ...(S.plOnly ? [] : [['fifi', 'en', "Carrots and flowers! Let's go!"]]), ['pip', 'pl', 'Biegniemy razem!']]);
+    if (!alive()) return;
+    const fade = document.createElement('div'); fade.className = 'fr-fade'; host.appendChild(fade);
+    await wait(30); fade.classList.add('on'); await wait(600); if (!alive()) return;
+    setStage(2); things.forEach(o => scene.remove(o.m)); things.length = 0;
+    ZU.rotation.y = 0; zuMode = 'running'; spawnZ = -24; drawHud();
+    fade.classList.remove('on'); await wait(600); fade.remove();
+    paused = false; target = 7.5;
+  };
+
   /* ---------- start + finish ---------- */
   const finish = async () => {
     if (finished) return; finished = true; target = 0;
@@ -620,4 +714,4 @@ export async function run(api) {
   setTimeout(() => host.classList.remove('hints'), 4000);
   const faster = setInterval(() => { if (!alive()) return clearInterval(faster); if (!finished && !paused && target > 0) target = Math.min(10, target + .25); }, 8000);
 }
-export { THREE, GEO, MAT, C, ITEMS, part, merge, mesh, blob, makePip, paintHog, splitHogLegs };
+export { THREE, GEO, MAT, C, ITEMS, part, merge, mesh, blob, makePip, paintHog, splitHogLegs, paintBunny, loadZuzia };
