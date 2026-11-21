@@ -9,7 +9,7 @@ const screen = $('#screen');
 
 /* ---------- saved state ---------- */
 const KEY = 'pipfifi.v1';
-let S = { stickers: [], voice: 'cartoon', excite: true, listen: true, sens: 'normal', kid: null, music: true, plOnly: false, recVoices: true, checkWords: true };
+let S = { stickers: [], voice: 'cartoon', excite: true, listen: true, sens: 'normal', kid: null, music: true, plOnly: false, recVoices: true, checkWords: true, lite: 'auto' };
 try { Object.assign(S, JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
 const KID = Object.assign({}, window.KID, S.kid || {});
@@ -283,7 +283,29 @@ const chars = () => charHTML('fifi', 'left') + charHTML('pip', 'right');
 function bindHome() { const h = $('#home'); if (h) h.onclick = () => home(false); }
 
 /* ---------- start ---------- */
+/* ---------- light mode for older iPads ----------
+   Fewer effects: no soft shadows, still clouds, sharper-but-lighter 3D. 'auto' switches it on when the
+   start screen runs slowly (measured once; it stays on for that iPad), or set it in the grown-up panel. */
+function applyLite() {
+  const on = S.lite === 'on' || (S.lite === 'auto' && S.liteAuto === true);
+  document.body.classList.toggle('lite', on); window.PF_LITE = on;
+}
+function measureLite() {
+  if (S.lite !== 'auto' || S.liteAuto) return applyLite();
+  let n = 0, slow = 0, last = 0, t0 = 0;
+  const f = now => {
+    if (!t0) { t0 = last = now; return requestAnimationFrame(f); }
+    const d = now - last; last = now; n++; if (d > 30) slow++;
+    if (now - t0 < 2500) return requestAnimationFrame(f);
+    const avg = (now - t0) / n;
+    if (avg > 21 || slow / n > .15) { S.liteAuto = true; save(); }
+    applyLite();
+  };
+  requestAnimationFrame(f);
+}
+
 function start() {
+  measureLite();
   show(`<div class="start"><div class="title">Pip &amp; Fifi</div>
     <div class="start-row">${charHTML('fifi')}<button class="big-play" id="go" aria-label="Play">${ICON.play}</button>${charHTML('pip')}</div></div>`);
   /* download bar: voices + music tunes; ▶ stays faded until everything is ready */
@@ -1892,6 +1914,8 @@ function parentPanel() {
       <div class="seg">${segBtn('checkWords', 'true', 'On')}${segBtn('checkWords', 'false', 'Off')}</div></div>
     <div class="row"><div><b>Language</b><div class="small">Polish only = test what she knows (just Pip asks)</div></div>
       <div class="seg">${segBtn('plOnly', 'false', 'Both')}${segBtn('plOnly', 'true', 'Polish only')}</div></div>
+    <div class="row"><div><b>Light mode</b><div class="small">for older iPads: fewer effects · ${S.lite === 'auto' ? (window.PF_LITE ? 'Auto: on for this iPad' : 'Auto: off for this iPad') : ''}</div></div>
+      <div class="seg">${segBtn('lite', 'auto', 'Auto')}${segBtn('lite', 'on', 'On')}${segBtn('lite', 'off', 'Off')}</div></div>
     <div class="row"><div><b>Music</b><div class="small">walk-in tune and menu music</div></div>
       <div class="seg">${segBtn('music', 'true', 'On')}${segBtn('music', 'false', 'Off')}</div></div>
     <div class="row"><div><b>Excited voices</b><div class="small">bouncy cheers, rising questions</div></div>
@@ -1908,6 +1932,7 @@ function parentPanel() {
   $$('.seg button', el).forEach(b => b.onclick = () => {
     const k = b.dataset.k; S[k] = (k === 'listen' || k === 'excite' || k === 'music' || k === 'plOnly' || k === 'recVoices' || k === 'checkWords') ? b.dataset.v === 'true' : b.dataset.v; save();
     if (k === 'music') { M.on = S.music; if (!S.music) M.stop(.3); }
+    if (k === 'lite') applyLite();
     $$(`.seg button[data-k="${k}"]`, el).forEach(x => x.classList.toggle('on', x === b));
   });
   $('#ve', el).onchange = e => { S.voiceEn = e.target.value; save(); pickVoices(); hush(); say('fifi', 'en', `Yay! Hello, ${$('#n1', el).value}! I'm Fifi!`); };

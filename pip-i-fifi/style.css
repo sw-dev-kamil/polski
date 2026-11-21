@@ -659,3 +659,9 @@ body.sunny #screen::before { content: ''; position: fixed; inset: 0; background:
   object-fit: cover; border-radius: 5vmin 5vmin 2vmin 2vmin; }
 .tile.pic .l { margin: 0 0 1.8vmin; }
 @media (orientation: portrait) { .menu.games-menu { top: 14vh; max-width: 80vw; } .games-menu .tile { width: 29vmin; height: 29vmin; } .games-menu .tile .e { font-size: 14vmin; } }
+
+/* 🐢 light mode (older iPads): no soft shadows or glows, clouds stand still, tail rests */
+body.lite .pz-piece, body.lite .pz-piece.lift, body.lite .ing, body.lite .ep-prop, body.lite .item, body.lite .fr-hint,
+body.lite .bowl, body.lite .sitem, body.lite .item.hint, body.lite .ing.hint { filter: none !important; }
+body.lite .cloud, body.lite .tail { animation: none !important; }
+body.lite .ep-rain { animation-duration: .9s; }

@@ -352,8 +352,8 @@ function makeFox() {
 export async function run(api) {
   const { say, sfx, M, wait, alive, S } = api;
   const host = document.getElementById('fr'), canvas = document.getElementById('frc'), hud = document.getElementById('frh');
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));   // iPad: 1.5 looks the same at arm's length, far less work
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: !window.PF_LITE, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(window.PF_LITE ? 1 : Math.min(devicePixelRatio || 1, 1.5));   // iPad: 1.5 looks the same at arm's length, far less work
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(FOG);

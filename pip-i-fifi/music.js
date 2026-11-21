@@ -401,18 +401,46 @@ function render(song) {
   return p && p.then ? p.then(done) : new Promise(res => { c.oncomplete = e => res(done(e.renderedBuffer)); });
 }
 
+/* ---------- ready-made tune files ---------- */
+function decodeFile(ab, m) {
+  const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  return new Promise(res => {
+    try {
+      const c = new OAC(1, RATE, RATE);
+      const ok = buf => {
+        if (!m.loop) return res({ buf, loopEnd: m.body, loopStart: 0 });
+        // the file is: ½ s of the loop's end, the loop, ½ s of its start — so even if the decoder
+        // adds a few ms of silence at the front, the loop points still land inside real music
+        const extra = Math.max(0, Math.min(buf.duration - (m.body + 2 * m.pre), 2112 / RATE));
+        res({ buf, loopStart: m.pre + extra, loopEnd: m.pre + m.body + extra });
+      };
+      const p = c.decodeAudioData(ab.slice(0), ok, () => res(null));
+      if (p && p.catch) p.catch(() => res(null));
+    } catch (e) { res(null); }
+  });
+}
+
 /* ---------- player ---------- */
 const SONGS = { walk: WALK, menu: MENU, snow: SNOW, sun: SUN, train: TRAIN, forest: FOREST, pzForest: PZ_FOREST, pzPlay: PZ_PLAY, pzNursery: PZ_NURSERY, pzKitchen: PZ_KITCHEN, pzFriends: PZ_FRIENDS };
 window.Music = {
   on: true, getCtx: () => null, songs: {}, ready: null,
   src: null, g: null, cur: null, base: 0, ducked: false, undo: 0,
-  prepare(name) {                            // walk-in first, then the menu tune
-    if (!this.ready) {
-      this.ready = {};
-      let chain = Promise.resolve();
-      Object.keys(SONGS).forEach(k => { chain = this.ready[k] = chain.then(() => render(SONGS[k])).then(r => { this.songs[k] = r; }).catch(() => {}); });
+  /* The tunes come as small ready-made files (music/*.m4a, made from the recipes above), so the iPad
+     only has to play them — composing them live was too heavy for older iPads. prepare() downloads
+     every file (kept offline by the service worker); a tune is decoded only when it is first played.
+     If a file is missing, the tune is composed live from its recipe as before. */
+  prepare(name) {
+    if (!this.index) this.index = fetch('music/index.json').then(r => r.ok ? r.json() : null).catch(() => null);
+    if (!this.raw) {
+      this.raw = {};
+      this.allRaw = this.index.then(idx => Promise.all(Object.keys(SONGS).map(k => this.raw[k] = (idx && idx[k]
+        ? fetch('music/' + k + '.m4a').then(r => r.ok ? r.arrayBuffer() : null).catch(() => null) : Promise.resolve(null)))));
     }
-    return name ? this.ready[name] : Promise.all(Object.values(this.ready));
+    if (!name) return this.allRaw;
+    this.ready = this.ready || {};
+    if (!this.ready[name]) this.ready[name] = this.allRaw.then(() => this.raw[name]).then(ab => this.index.then(idx => ab ? decodeFile(ab, idx[name]) : null))
+      .then(r => r || render(SONGS[name])).then(r => { this.songs[name] = r; }).catch(() => {});
+    return this.ready[name];
   },
   level() { return this.base * (this.ducked ? 0.3 : 1); },
   length(name) { return this.songs[name] ? this.songs[name].loopEnd : 0; },
@@ -425,12 +453,12 @@ window.Music = {
       const c = this.getCtx(), s0 = this.songs[name];
       if (this.cur !== name || !this.on || !c || !s0 || this.src) return;
       const s = c.createBufferSource(); s.buffer = s0.buf;
-      if (SONGS[name].loop) { s.loop = true; s.loopStart = 0; s.loopEnd = s0.loopEnd; }
+      if (SONGS[name].loop) { s.loop = true; s.loopStart = s0.loopStart || 0; s.loopEnd = s0.loopEnd; }
       const g = c.createGain(); s.connect(g).connect(c.destination);
       this.base = vol; const t = c.currentTime;
       g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(this.level(), t + 0.25);
       s.onended = () => { if (this.src === s) { this.src = null; this.g = null; this.cur = null; } };
-      s.start(); this.src = s; this.g = g;
+      s.start(0, s0.loopStart || 0); this.src = s; this.g = g;
     };
     this.songs[name] ? go() : this.prepare(name).then(go);
   },

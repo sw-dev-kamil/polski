@@ -30,8 +30,8 @@ const SUN = { x: -9, y: 14, z: 16 }, SHX = -SUN.x / SUN.y, SHZ = -SUN.z / SUN.y;
 export async function run(api) {
   const { say, sfx, M, wait, alive, S } = api;
   const host = document.getElementById('wk'), canvas = document.getElementById('wkc'), hud = document.getElementById('wkh');
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5)); renderer.outputColorSpace = THREE.SRGBColorSpace;
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: !window.PF_LITE, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(window.PF_LITE ? 1 : Math.min(devicePixelRatio || 1, 1.5)); renderer.outputColorSpace = THREE.SRGBColorSpace;
   const scene = new THREE.Scene(), FOG = 0xBFE0E6;
   scene.background = new THREE.Color(FOG); scene.fog = new THREE.Fog(FOG, 26, 60);
   const cam = new THREE.PerspectiveCamera(50, 1, .1, 160);
